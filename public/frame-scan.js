@@ -122,6 +122,8 @@ function clearMatch() {
 function detectFrameMarker(sourceCanvas) {
   const size = Math.min(sourceCanvas.width, sourceCanvas.height);
   const sampleSize = Math.min(360, size);
+  console.log("🔍 Scanning for marker...", { canvasSize: sourceCanvas.width, size, sampleSize });
+  
   const scanCanvas = document.createElement("canvas");
   const scanContext = scanCanvas.getContext("2d", { willReadFrequently: true });
   const sourceX = Math.round((sourceCanvas.width - size) / 2);
@@ -139,11 +141,16 @@ function detectFrameMarker(sourceCanvas) {
   }
 
   const threshold = getOtsuThreshold(buildHistogram(luminance));
+  console.log("🎯 Otsu threshold:", threshold);
+  
   const bounds = findDarkBounds(luminance, sampleSize, threshold);
 
   if (!bounds) {
+    console.log("❌ No dark bounds found (marker not visible)");
     return null;
   }
+  
+  console.log("📦 Found dark bounds:", bounds);
 
   const markerSize = Math.max(bounds.width, bounds.height);
 
