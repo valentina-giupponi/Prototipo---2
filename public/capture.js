@@ -11,7 +11,7 @@ const previewPlaceholder = document.querySelector("#previewPlaceholder");
 const lastSaved = document.querySelector("#lastSaved");
 const deletePhotoButton = document.querySelector("#deletePhoto");
 
-const usesBrowserStorage = location.protocol === "file:" || location.hostname.endsWith("github.io");
+const usesBrowserStorage = location.protocol === "file:";
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
