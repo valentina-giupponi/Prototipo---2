@@ -147,7 +147,8 @@ function detectFrameMarker(sourceCanvas) {
 
   const markerSize = Math.max(bounds.width, bounds.height);
 
-  if (markerSize < sampleSize * 0.12) {
+  if (markerSize < sampleSize * 0.08) {
+    console.log("❌ Marker too small:", markerSize, "< threshold:", sampleSize * 0.08);
     return null;
   }
 
@@ -155,12 +156,15 @@ function detectFrameMarker(sourceCanvas) {
   const borderScore = getBorderScore(grid);
 
   if (borderScore < 0.45) {
+    console.log("❌ Border score too low:", borderScore, "threshold: 0.45");
     return null;
   }
 
   const bits = getInnerBits(grid);
   const numericId = parseInt(bits.join(""), 2);
   const id = String(Number.isFinite(numericId) ? numericId : 0).padStart(3, "0");
+
+  console.log("✅ Marker detected!", { id, borderScore, bits: bits.join("") });
 
   return {
     id,

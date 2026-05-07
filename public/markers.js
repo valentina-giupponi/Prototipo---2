@@ -19,7 +19,8 @@ for (const frameId of frames) {
     for (let col = 0; col < 6; col += 1) {
       const cell = document.createElement("span");
       const isBorder = row === 0 || col === 0 || row === 5 || col === 5;
-      const isDark = isBorder || bits[bitIndex++] === 1;
+      const bitValue = isBorder ? 1 : bits[bitIndex++];
+      const isDark = bitValue === 1;
       cell.className = isDark ? "is-dark" : "";
       marker.append(cell);
     }
