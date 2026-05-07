@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scansione cornice</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="capture-page">
+    <main class="app-shell frame-scan-shell">
+      <section class="capture-workspace" aria-label="Scansione cornice">
+        <div class="topbar">
+          <div>
+            <p class="eyebrow">Riconoscimento cornice</p>
+            <h1>Scansiona la cornice</h1>
+          </div>
+          <div class="nav-actions">
+            <a class="screen-link" href="index.html">Scansiona disegno</a>
+            <a class="screen-link" href="markers.html" target="_blank" rel="noreferrer">Marker</a>
+          </div>
+        </div>
+
+        <div class="camera-panel">
+          <video id="camera" autoplay playsinline muted></video>
+          <canvas id="snapshot" hidden></canvas>
+          <div id="cameraMessage" class="camera-message">
+            Inquadra il codice sulla cornice.
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="startCamera" type="button">Attiva camera</button>
+          <button id="scanFrame" type="button" disabled>Riconosci cornice</button>
+        </div>
+
+        <p id="status" class="status" role="status">Nessuna cornice riconosciuta.</p>
+      </section>
+
+      <aside class="preview-panel" aria-label="Disegno associato">
+        <p class="eyebrow">Disegno nella cornice</p>
+        <div class="preview-frame">
+          <img id="matchedImage" alt="Disegno associato alla cornice">
+          <span id="matchPlaceholder">Qui apparirà il disegno collegato alla cornice.</span>
+        </div>
+        <p id="matchInfo" class="muted">Scansiona un marker per cercare il disegno associato.</p>
+      </aside>
+    </main>
+
+    <script src="frame-scan.js"></script>
+  </body>
+</html>

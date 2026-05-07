@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scansione disegno</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="capture-page">
+    <main class="app-shell">
+      <section class="capture-workspace" aria-label="Scansione disegno">
+        <div class="topbar">
+          <div>
+            <p class="eyebrow">Prototipo scanner</p>
+            <h1>Acquisisci il disegno</h1>
+          </div>
+          <div class="nav-actions">
+            <a class="screen-link" href="frame.html">Scansiona cornice</a>
+            <a class="screen-link" href="display.html" target="_blank" rel="noreferrer">Apri schermo</a>
+          </div>
+        </div>
+
+        <div class="camera-panel">
+          <video id="camera" autoplay playsinline muted></video>
+          <canvas id="snapshot" hidden></canvas>
+          <div id="cameraMessage" class="camera-message">
+            Premi “Attiva camera” per iniziare.
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="startCamera" type="button">Attiva camera</button>
+          <button id="takePhoto" type="button" disabled>Scatta e invia</button>
+          <label class="file-button" for="fileInput">Carica immagine</label>
+          <input id="fileInput" type="file" accept="image/*">
+          <label class="toggle-control">
+            <input id="scanMode" type="checkbox" checked>
+            <span>Scansione tratto</span>
+          </label>
+        </div>
+
+        <p id="status" class="status" role="status">Nessuna immagine inviata.</p>
+      </section>
+
+      <aside class="preview-panel" aria-label="Ultima immagine inviata">
+        <p class="eyebrow">Ultimo invio</p>
+        <div class="preview-frame">
+          <img id="preview" alt="Anteprima dell'ultima immagine acquisita">
+          <span id="previewPlaceholder">Qui apparirà la foto scattata.</span>
+        </div>
+        <p id="lastSaved" class="muted">Il disegno verrà assegnato automaticamente a una cornice.</p>
+        <button id="deletePhoto" class="delete-button" type="button" disabled>Elimina ultima foto</button>
+      </aside>
+    </main>
+
+    <script src="capture.js"></script>
+  </body>
+</html>

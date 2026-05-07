@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Schermo proiezione</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="display-page">
+    <main class="display-stage">
+      <div id="displayWall" class="display-wall" aria-label="Disegni caricati"></div>
+      <div id="emptyState" class="empty-state">
+        <p>In attesa di un disegno</p>
+      </div>
+      <div class="display-meta">
+        <span id="connectionState">Connessione al server...</span>
+        <a href="frame.html">Scansiona cornice</a>
+        <span id="imageTime"></span>
+      </div>
+    </main>
+
+    <script src="display.js"></script>
+  </body>
+</html>

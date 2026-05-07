@@ -1,0 +1,10 @@
+{
+  "name": "drawing-scan-prototype",
+  "version": "1.0.0",
+  "description": "Prototype with one page to capture a drawing and one page to show the latest uploaded image.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "private": true
+}
