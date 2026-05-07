@@ -19,7 +19,7 @@ function debugLog_func(msg) {
   console.log(msg);
 }
 
-const usesBrowserStorage = location.protocol === "file:" || location.hostname.endsWith("github.io");
+const usesBrowserStorage = location.protocol === "file:";
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 
@@ -62,14 +62,21 @@ async function startCamera() {
 async function loadImages() {
   if (usesBrowserStorage) {
     images = readLocalImages();
+    debugLog_func("📚 Loaded " + images.length + " images from browser storage");
     return;
   }
 
   try {
     const response = await fetch("api/images");
     images = await response.json();
+    debugLog_func("📚 Loaded " + images.length + " images from server");
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      debugLog_func("  [" + i + "] ID:" + img.id + " Frame:" + (img.frame?.id || "none"));
+    }
   } catch (error) {
     console.error(error);
+    debugLog_func("❌ Failed to load images from server");
     setStatus("Non riesco a leggere i disegni salvati.", true);
   }
 }
@@ -101,21 +108,33 @@ function scanFrame() {
     return;
   }
 
+  debugLog_func("🔍 Looking for image with frameId: " + marker.id);
   const match = findImageByFrame(marker.id);
 
   if (!match) {
+    debugLog_func("❌ No image found for frame " + marker.id);
     clearMatch();
     setStatus(`Riconosciuta ${marker.label}, ma nessun disegno risulta associato.`, true);
     matchInfo.textContent = "Controlla che un disegno sia stato proiettato in quella cornice.";
     return;
   }
 
+  debugLog_func("✅ Found image for frame " + marker.id);
   showMatch(match, marker);
   setStatus(`Riconosciuta ${marker.label}: disegno trovato.`);
 }
 
 function findImageByFrame(frameId) {
-  return images.find((image) => image.frame?.id === frameId) || null;
+  debugLog_func("🔎 Searching in " + images.length + " images for frameId=" + frameId);
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    debugLog_func("  [" + i + "] has frameId=" + (img.frame?.id || "none"));
+    if (img.frame?.id === frameId) {
+      debugLog_func("  ✓ MATCH!");
+      return img;
+    }
+  }
+  return null;
 }
 
 function showMatch(image, marker) {
