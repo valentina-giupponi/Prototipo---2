@@ -175,8 +175,8 @@ function detectFrameMarker(sourceCanvas) {
   const grid = sampleMarkerGrid(luminance, sampleSize, threshold, bounds, 6);
   const borderScore = getBorderScore(grid);
 
-  if (borderScore < 0.45) {
-    debugLog_func("❌ Border score too low: " + borderScore + " < 0.45");
+  if (borderScore < 0.2) {
+    debugLog_func("❌ Border score too low: " + borderScore + " < 0.2");
     return null;
   }
 
