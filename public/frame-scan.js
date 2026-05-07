@@ -147,14 +147,14 @@ function detectFrameMarker(sourceCanvas) {
 
   const markerSize = Math.max(bounds.width, bounds.height);
 
-  if (markerSize < sampleSize * 0.18) {
+  if (markerSize < sampleSize * 0.12) {
     return null;
   }
 
   const grid = sampleMarkerGrid(luminance, sampleSize, threshold, bounds, 6);
   const borderScore = getBorderScore(grid);
 
-  if (borderScore < 0.72) {
+  if (borderScore < 0.45) {
     return null;
   }
 
