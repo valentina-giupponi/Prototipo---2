@@ -7,6 +7,17 @@ const cameraMessage = document.querySelector("#cameraMessage");
 const matchedImage = document.querySelector("#matchedImage");
 const matchPlaceholder = document.querySelector("#matchPlaceholder");
 const matchInfo = document.querySelector("#matchInfo");
+const debugLog = document.querySelector("#debugLog");
+const debugContent = document.querySelector("#debugContent");
+
+let debugMessages = [];
+function debugLog_func(msg) {
+  debugMessages.push(msg);
+  if (debugMessages.length > 20) debugMessages.shift();
+  if (debugContent) debugContent.textContent = debugMessages.join("\n");
+  if (debugLog) debugLog.style.display = "block";
+  console.log(msg);
+}
 
 const usesBrowserStorage = location.protocol === "file:" || location.hostname.endsWith("github.io");
 const localImageKey = "drawing-scan-prototype.latest";
@@ -77,6 +88,7 @@ function scanFrame() {
     return;
   }
 
+  debugLog_func("📸 Capturing frame: " + width + "x" + height);
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d", { willReadFrequently: true });
@@ -122,7 +134,8 @@ function clearMatch() {
 function detectFrameMarker(sourceCanvas) {
   const size = Math.min(sourceCanvas.width, sourceCanvas.height);
   const sampleSize = Math.min(360, size);
-  console.log("🔍 Scanning for marker...", { canvasSize: sourceCanvas.width, size, sampleSize });
+  debugLog_func("🔍 Scanning for marker...");
+  debugLog_func("canvasSize: " + sourceCanvas.width + ", size: " + size + ", sampleSize: " + sampleSize);
   
   const scanCanvas = document.createElement("canvas");
   const scanContext = scanCanvas.getContext("2d", { willReadFrequently: true });
@@ -141,21 +154,21 @@ function detectFrameMarker(sourceCanvas) {
   }
 
   const threshold = getOtsuThreshold(buildHistogram(luminance));
-  console.log("🎯 Otsu threshold:", threshold);
+  debugLog_func("🎯 Otsu threshold: " + threshold);
   
   const bounds = findDarkBounds(luminance, sampleSize, threshold);
 
   if (!bounds) {
-    console.log("❌ No dark bounds found (marker not visible)");
+    debugLog_func("❌ No dark bounds found (marker not visible)");
     return null;
   }
   
-  console.log("📦 Found dark bounds:", bounds);
+  debugLog_func("📦 Found dark bounds: " + JSON.stringify(bounds));
 
   const markerSize = Math.max(bounds.width, bounds.height);
 
   if (markerSize < sampleSize * 0.08) {
-    console.log("❌ Marker too small:", markerSize, "< threshold:", sampleSize * 0.08);
+    debugLog_func("❌ Marker too small: " + markerSize + " < " + (sampleSize * 0.08));
     return null;
   }
 
@@ -163,7 +176,7 @@ function detectFrameMarker(sourceCanvas) {
   const borderScore = getBorderScore(grid);
 
   if (borderScore < 0.45) {
-    console.log("❌ Border score too low:", borderScore, "threshold: 0.45");
+    debugLog_func("❌ Border score too low: " + borderScore + " < 0.45");
     return null;
   }
 
@@ -171,7 +184,7 @@ function detectFrameMarker(sourceCanvas) {
   const numericId = parseInt(bits.join(""), 2);
   const id = String(Number.isFinite(numericId) ? numericId : 0).padStart(3, "0");
 
-  console.log("✅ Marker detected!", { id, borderScore, bits: bits.join("") });
+  debugLog_func("✅ Marker detected! ID: " + id + ", borderScore: " + borderScore);
 
   return {
     id,
