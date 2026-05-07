@@ -8,7 +8,7 @@ const matchedImage = document.querySelector("#matchedImage");
 const matchPlaceholder = document.querySelector("#matchPlaceholder");
 const matchInfo = document.querySelector("#matchInfo");
 
-const isFileMode = location.protocol === "file:";
+const usesBrowserStorage = location.protocol === "file:" || location.hostname.endsWith("github.io");
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 
@@ -49,7 +49,7 @@ async function startCamera() {
 }
 
 async function loadImages() {
-  if (isFileMode) {
+  if (usesBrowserStorage) {
     images = readLocalImages();
     return;
   }

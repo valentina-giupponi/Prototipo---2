@@ -11,7 +11,7 @@ const previewPlaceholder = document.querySelector("#previewPlaceholder");
 const lastSaved = document.querySelector("#lastSaved");
 const deletePhotoButton = document.querySelector("#deletePhoto");
 
-const isFileMode = location.protocol === "file:";
+const usesBrowserStorage = location.protocol === "file:" || location.hostname.endsWith("github.io");
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
@@ -99,7 +99,7 @@ async function uploadSelectedFile(event) {
 }
 
 async function uploadImage(imageData) {
-  if (isFileMode) {
+  if (usesBrowserStorage) {
     saveLocalImage(imageData);
     return;
   }
@@ -130,7 +130,7 @@ async function uploadImage(imageData) {
 }
 
 async function loadLatestImage() {
-  if (isFileMode) {
+  if (usesBrowserStorage) {
     const image = readLocalImages().at(-1);
 
     if (image) {
@@ -187,7 +187,7 @@ function saveLocalImage(imageData) {
 }
 
 async function deletePhoto() {
-  if (isFileMode) {
+  if (usesBrowserStorage) {
     clearLocalImage();
     return;
   }

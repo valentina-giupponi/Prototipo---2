@@ -3,7 +3,7 @@ const emptyState = document.querySelector("#emptyState");
 const connectionState = document.querySelector("#connectionState");
 const imageTime = document.querySelector("#imageTime");
 
-const isFileMode = location.protocol === "file:";
+const usesBrowserStorage = location.protocol === "file:" || location.hostname.endsWith("github.io");
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
@@ -14,7 +14,7 @@ loadImages();
 connectToImageEvents();
 
 async function loadImages() {
-  if (isFileMode) {
+  if (usesBrowserStorage) {
     images = readLocalImages();
     connectionState.textContent = "Modalità interna";
     renderImages();
@@ -32,7 +32,7 @@ async function loadImages() {
 }
 
 function connectToImageEvents() {
-  if (isFileMode) {
+  if (usesBrowserStorage) {
     imageChannel?.addEventListener("message", (event) => {
       if (event.data?.type === "delete") {
         removeImage(event.data.id);
