@@ -261,7 +261,7 @@ function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
   const squareSize = Math.max(bounds.width, bounds.height);
   const startX = Math.round((bounds.minX + bounds.maxX - squareSize) / 2);
   const startY = Math.round((bounds.minY + bounds.maxY - squareSize) / 2);
-  const darkLimit = Math.min(140, threshold + 20);
+  const darkLimit = Math.min(120, threshold + 5);
 
   for (let row = 0; row < gridSize; row += 1) {
     const cells = [];
@@ -281,7 +281,7 @@ function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
         }
       }
 
-      cells.push(totalPixels > 0 && darkPixels / totalPixels > 0.48 ? 1 : 0);
+      cells.push(totalPixels > 0 && darkPixels / totalPixels > 0.65 ? 1 : 0);
     }
 
     grid.push(cells);
