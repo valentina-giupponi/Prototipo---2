@@ -105,7 +105,8 @@ function serveFile(res, filePath) {
     }
 
     const type = mimeTypes[path.extname(filePath).toLowerCase()] || "application/octet-stream";
-    res.writeHead(200, { "Content-Type": type });
+    const headers = { "Content-Type": type, "Cache-Control": "no-cache, no-store, must-revalidate" };
+    res.writeHead(200, headers);
     res.end(content);
   });
 }
