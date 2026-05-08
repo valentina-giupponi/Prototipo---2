@@ -200,9 +200,12 @@ function detectFrameMarker(sourceCanvas) {
   }
 
   const bits = getInnerBits(grid);
-  const numericId = parseInt(bits.join(""), 2);
+  const bitsStr = bits.join("");
+  const numericId = parseInt(bitsStr, 2);
   const id = String(Number.isFinite(numericId) ? numericId : 0).padStart(3, "0");
 
+  debugLog_func("📍 Extracted bits: " + bitsStr);
+  debugLog_func("🔢 Decoded ID: " + numericId + " → Formatted: " + id);
   debugLog_func("✅ Marker detected! ID: " + id + ", borderScore: " + borderScore);
 
   return {
@@ -228,7 +231,8 @@ function findDarkBounds(luminance, size, threshold) {
   let maxX = 0;
   let maxY = 0;
   let count = 0;
-  const darkLimit = Math.min(125, threshold + 10);
+  const darkLimit = Math.min(120, threshold + 5);
+  debugLog_func("🎯 findDarkBounds using darkLimit: " + darkLimit + " (threshold: " + threshold + ")");
 
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
@@ -262,6 +266,7 @@ function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
   const startX = Math.round((bounds.minX + bounds.maxX - squareSize) / 2);
   const startY = Math.round((bounds.minY + bounds.maxY - squareSize) / 2);
   const darkLimit = Math.min(120, threshold + 5);
+  debugLog_func("🎯 sampleMarkerGrid using darkLimit: " + darkLimit + " (threshold: " + threshold + ")");
 
   for (let row = 0; row < gridSize; row += 1) {
     const cells = [];

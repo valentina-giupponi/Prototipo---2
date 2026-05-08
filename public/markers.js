@@ -2,6 +2,13 @@ const markerGrid = document.querySelector("#markerGrid");
 const frames = ["001", "002", "003", "004", "005", "006"];
 
 for (const frameId of frames) {
+  const frameNum = Number(frameId);
+  
+  if (frameNum < 0 || frameNum > 65535) {
+    console.warn("Frame ID " + frameId + " out of range [0-65535]");
+    continue;
+  }
+  
   const card = document.createElement("article");
   card.className = "marker-card";
 
@@ -12,7 +19,7 @@ for (const frameId of frames) {
   marker.className = "marker-code";
   marker.setAttribute("aria-label", `Marker Cornice ${frameId}`);
 
-  const bits = Number(frameId).toString(2).padStart(16, "0").slice(-16).split("").map(Number);
+  const bits = frameNum.toString(2).padStart(16, "0").split("").map(Number);
   let bitIndex = 0;
 
   for (let row = 0; row < 6; row += 1) {
