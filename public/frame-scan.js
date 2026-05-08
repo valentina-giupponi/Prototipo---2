@@ -194,8 +194,8 @@ function detectFrameMarker(sourceCanvas) {
   const grid = sampleMarkerGrid(luminance, sampleSize, threshold, bounds, 6);
   const borderScore = getBorderScore(grid);
 
-  if (borderScore < 0.2) {
-    debugLog_func("❌ Border score too low: " + borderScore + " < 0.2");
+  if (borderScore < 0.05) {
+    debugLog_func("❌ Border score too low: " + borderScore + " < 0.05");
     return null;
   }
 
@@ -289,7 +289,7 @@ function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
         }
       }
 
-      cells.push(totalPixels > 0 && darkPixels / totalPixels > 0.65 ? 1 : 0);
+      cells.push(totalPixels > 0 && darkPixels / totalPixels > 0.55 ? 1 : 0);
     }
 
     grid.push(cells);
