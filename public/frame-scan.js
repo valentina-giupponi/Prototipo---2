@@ -231,7 +231,7 @@ function findDarkBounds(luminance, size, threshold) {
   let maxX = 0;
   let maxY = 0;
   let count = 0;
-  const darkLimit = Math.min(120, threshold + 5);
+  const darkLimit = Math.min(128, threshold + 8);
   debugLog_func("🎯 findDarkBounds using darkLimit: " + darkLimit + " (threshold: " + threshold + ")");
 
   for (let y = 0; y < size; y += 1) {
@@ -247,8 +247,11 @@ function findDarkBounds(luminance, size, threshold) {
   }
 
   if (count < size * size * 0.015) {
+    debugLog_func("❌ Not enough dark pixels: " + count + " < " + Math.round(size * size * 0.015));
     return null;
   }
+  
+  debugLog_func("✓ Found " + count + " dark pixels");
 
   return {
     minX,
@@ -265,7 +268,7 @@ function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
   const squareSize = Math.max(bounds.width, bounds.height);
   const startX = Math.round((bounds.minX + bounds.maxX - squareSize) / 2);
   const startY = Math.round((bounds.minY + bounds.maxY - squareSize) / 2);
-  const darkLimit = Math.min(120, threshold + 5);
+  const darkLimit = Math.min(128, threshold + 8);
   debugLog_func("🎯 sampleMarkerGrid using darkLimit: " + darkLimit + " (threshold: " + threshold + ")");
 
   for (let row = 0; row < gridSize; row += 1) {
