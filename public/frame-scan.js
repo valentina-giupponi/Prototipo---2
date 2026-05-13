@@ -24,13 +24,24 @@ const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 
 const rawMarkerToFrame = {
-  "102": "001",
-  "1654": "002",
-  "100": "003",
-  "119": "004",
-  "30583": "006"
+  "755": "001",
+  "907": "002",
+  "408": "003",
+  "135": "004",
+  "830": "005",
+  "765": "006"
 };
 
+const knownMarkerSources = [
+  { frameId: "001", arucoId: "755", src: "assets/aruco/frame-001.jpg" },
+  { frameId: "002", arucoId: "907", src: "assets/aruco/frame-002.jpg" },
+  { frameId: "003", arucoId: "408", src: "assets/aruco/frame-003.jpg" },
+  { frameId: "004", arucoId: "135", src: "assets/aruco/frame-004.jpg" },
+  { frameId: "005", arucoId: "830", src: "assets/aruco/frame-005.jpg" },
+  { frameId: "006", arucoId: "765", src: "assets/aruco/frame-006.jpg" }
+];
+
+let knownMarkerPatterns = [];
 
 let stream = null;
 let images = [];
@@ -39,6 +50,7 @@ startCameraButton.addEventListener("click", startCamera);
 scanFrameButton.addEventListener("click", scanFrame);
 
 loadImages();
+loadKnownMarkerPatterns();
 
 async function startCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -212,17 +224,19 @@ function detectFrameMarker(sourceCanvas) {
   const numericId = parseInt(bitsStr, 2);
   const rawId = String(Number.isFinite(numericId) ? numericId : 0);
   const mappedFrameId = rawMarkerToFrame[rawId];
+  const templateMatch = findBestKnownMarkerMatch(bitsStr);
+  const frameId = templateMatch?.frameId || mappedFrameId || null;
 
   debugLog_func("📍 Extracted bits: " + bitsStr);
   debugLog_func("🔢 Decoded raw ID: " + rawId);
   debugLog_func("🧭 Raw map: " + (mappedFrameId || "none"));
+  debugLog_func("🧩 Template match: " + (templateMatch ? templateMatch.frameId + " distance=" + templateMatch.distance + " margin=" + templateMatch.margin : "none"));
 
-  if (!mappedFrameId) {
-    debugLog_func("❌ Raw ID " + rawId + " is not mapped to any frame. Retrying with a clearer scan is safer than a wrong match.");
+  if (!frameId) {
+    debugLog_func("❌ Marker not confidently matched. Try flatter, closer, and with only one marker in frame.");
     return null;
   }
 
-  const frameId = mappedFrameId;
   debugLog_func("✅ Marker detected! Frame: " + frameId + ", raw ID: " + rawId + ", borderScore: " + borderScore);
 
   return {
@@ -243,50 +257,85 @@ function buildHistogram(values) {
   return histogram;
 }
 
-function findDarkBounds(luminance, size, threshold) {
-  let minX = size;
-  let minY = size;
-  let maxX = 0;
-  let maxY = 0;
-  let count = 0;
+function findDarkBounds(luminance, imageWidth, threshold, imageHeight = imageWidth) {
   const darkLimit = Math.min(128, threshold + 8);
+  const minArea = imageWidth * imageHeight * 0.015;
+  const visited = new Uint8Array(imageWidth * imageHeight);
+  let best = null;
   debugLog_func("🎯 findDarkBounds using darkLimit: " + darkLimit + " (threshold: " + threshold + ")");
 
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      if (luminance[y * size + x] <= darkLimit) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
+  for (let y = 0; y < imageHeight; y += 1) {
+    for (let x = 0; x < imageWidth; x += 1) {
+      const startIndex = y * imageWidth + x;
+
+      if (visited[startIndex] || luminance[startIndex] > darkLimit) {
+        continue;
+      }
+
+      const queue = [startIndex];
+      visited[startIndex] = 1;
+      let cursor = 0;
+      let minX = x;
+      let minY = y;
+      let maxX = x;
+      let maxY = y;
+      let count = 0;
+
+      while (cursor < queue.length) {
+        const current = queue[cursor++];
+        const currentX = current % imageWidth;
+        const currentY = Math.floor(current / imageWidth);
         count += 1;
+        minX = Math.min(minX, currentX);
+        minY = Math.min(minY, currentY);
+        maxX = Math.max(maxX, currentX);
+        maxY = Math.max(maxY, currentY);
+
+        const neighbors = [
+          currentX > 0 ? current - 1 : -1,
+          currentX < imageWidth - 1 ? current + 1 : -1,
+          currentY > 0 ? current - imageWidth : -1,
+          currentY < imageHeight - 1 ? current + imageWidth : -1
+        ];
+
+        for (const neighbor of neighbors) {
+          if (neighbor >= 0 && !visited[neighbor] && luminance[neighbor] <= darkLimit) {
+            visited[neighbor] = 1;
+            queue.push(neighbor);
+          }
+        }
+      }
+
+      const width = maxX - minX + 1;
+      const height = maxY - minY + 1;
+      const squareRatio = Math.min(width, height) / Math.max(width, height);
+      const candidate = { minX, minY, maxX, maxY, width, height, count, squareRatio };
+
+      if (squareRatio >= 0.65 && (!best || count > best.count)) {
+        best = candidate;
       }
     }
   }
 
-  if (count < size * size * 0.015) {
-    debugLog_func("❌ Not enough dark pixels: " + count + " < " + Math.round(size * size * 0.015));
+  if (!best || best.count < minArea) {
+    debugLog_func("❌ Not enough dark marker pixels: " + (best?.count || 0) + " < " + Math.round(minArea));
     return null;
   }
-  
-  debugLog_func("✓ Found " + count + " dark pixels");
 
-  return {
-    minX,
-    minY,
-    maxX,
-    maxY,
-    width: maxX - minX + 1,
-    height: maxY - minY + 1
-  };
+  debugLog_func("✓ Found marker component with " + best.count + " dark pixels");
+
+  return best;
 }
 
-function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
+function sampleMarkerGrid(luminance, imageWidth, threshold, bounds, gridSize, imageHeight = imageWidth) {
   const grid = [];
-  const startX = bounds.minX;
-  const startY = bounds.minY;
-  const sampleWidth = Math.max(1, bounds.width);
-  const sampleHeight = Math.max(1, bounds.height);
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+  const side = Math.max(bounds.width, bounds.height);
+  const startX = Math.round(centerX - side / 2);
+  const startY = Math.round(centerY - side / 2);
+  const sampleWidth = Math.max(1, side);
+  const sampleHeight = Math.max(1, side);
   const darkLimit = Math.min(128, threshold + 8);
   debugLog_func("🎯 sampleMarkerGrid using darkLimit: " + darkLimit + " (threshold: " + threshold + ")");
 
@@ -301,9 +350,9 @@ function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
       let darkPixels = 0;
       let totalPixels = 0;
 
-      for (let y = Math.max(0, y0); y < Math.min(imageSize, y1); y += 1) {
-        for (let x = Math.max(0, x0); x < Math.min(imageSize, x1); x += 1) {
-          darkPixels += luminance[y * imageSize + x] <= darkLimit ? 1 : 0;
+      for (let y = Math.max(0, y0); y < Math.min(imageHeight, y1); y += 1) {
+        for (let x = Math.max(0, x0); x < Math.min(imageWidth, x1); x += 1) {
+          darkPixels += luminance[y * imageWidth + x] <= darkLimit ? 1 : 0;
           totalPixels += 1;
         }
       }
@@ -388,6 +437,126 @@ function getOtsuThreshold(histogram) {
   }
 
   return threshold;
+}
+
+async function loadKnownMarkerPatterns() {
+  const patterns = [];
+
+  for (const marker of knownMarkerSources) {
+    try {
+      const image = await loadImage(marker.src);
+      const markerCanvas = document.createElement("canvas");
+      const markerContext = markerCanvas.getContext("2d", { willReadFrequently: true });
+      markerCanvas.width = image.naturalWidth;
+      markerCanvas.height = image.naturalHeight;
+      markerContext.drawImage(image, 0, 0);
+      const bits = extractMarkerBits(markerCanvas);
+
+      if (bits) {
+        patterns.push({ ...marker, bits });
+      }
+    } catch (error) {
+      console.warn("Unable to load marker template", marker.src, error);
+    }
+  }
+
+  knownMarkerPatterns = patterns;
+  debugLog_func("🧩 Loaded " + knownMarkerPatterns.length + " marker templates");
+}
+
+function extractMarkerBits(sourceCanvas) {
+  const context = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  const image = context.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+  const luminance = [];
+
+  for (let index = 0; index < image.data.length; index += 4) {
+    luminance.push(getLuminance(image.data[index], image.data[index + 1], image.data[index + 2]));
+  }
+
+  const threshold = getOtsuThreshold(buildHistogram(luminance));
+  const bounds = findDarkBounds(luminance, sourceCanvas.width, threshold, sourceCanvas.height);
+
+  if (!bounds) {
+    return null;
+  }
+
+  const grid = sampleMarkerGrid(luminance, sourceCanvas.width, threshold, bounds, 6, sourceCanvas.height);
+  return getInnerBits(grid).join("");
+}
+
+function findBestKnownMarkerMatch(bitsStr) {
+  let best = null;
+  let secondBest = null;
+
+  for (const marker of knownMarkerPatterns) {
+    for (const variant of getBitVariants(marker.bits)) {
+      const distance = getHammingDistance(bitsStr, variant);
+      const candidate = { frameId: marker.frameId, arucoId: marker.arucoId, distance };
+
+      if (!best || distance < best.distance) {
+        secondBest = best;
+        best = candidate;
+      } else if (!secondBest || distance < secondBest.distance) {
+        secondBest = candidate;
+      }
+    }
+  }
+
+  if (!best) {
+    return null;
+  }
+
+  const margin = secondBest ? secondBest.distance - best.distance : 16;
+  debugLog_func("🧪 Best template: " + best.frameId + " dist=" + best.distance + ", second=" + (secondBest ? secondBest.frameId + "/" + secondBest.distance : "none"));
+
+  if (best.distance <= 2 || (best.distance <= 4 && margin >= 2)) {
+    return { ...best, margin };
+  }
+
+  return null;
+}
+
+function getBitVariants(bitsStr) {
+  const grid = [];
+  let index = 0;
+
+  for (let row = 0; row < 4; row += 1) {
+    const cells = [];
+
+    for (let col = 0; col < 4; col += 1) {
+      cells.push(bitsStr[index++]);
+    }
+
+    grid.push(cells);
+  }
+
+  const variants = [];
+  let current = grid;
+
+  for (let turn = 0; turn < 4; turn += 1) {
+    variants.push(current.flat().join(""));
+    current = rotateGrid(current);
+  }
+
+  return variants;
+}
+
+function rotateGrid(grid) {
+  return grid[0].map((_, index) => grid.map((row) => row[index]).reverse());
+}
+
+function getHammingDistance(a, b) {
+  if (!a || !b || a.length !== b.length) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let distance = 0;
+
+  for (let index = 0; index < a.length; index += 1) {
+    distance += a[index] === b[index] ? 0 : 1;
+  }
+
+  return distance;
 }
 
 function normalizeFrameId(frameId) {
