@@ -19,9 +19,28 @@ function debugLog_func(msg) {
   console.log(msg);
 }
 
-const usesBrowserStorage = location.protocol === "file:";
+const usesBrowserStorage = location.protocol === "file:" || location.hostname.endsWith("github.io");
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
+
+const rawMarkerToFrame = {
+  "102": "001",
+  "1654": "002",
+  "100": "003",
+  "119": "004",
+  "30583": "006"
+};
+
+const knownMarkerSources = [
+  { frameId: "001", src: "assets/aruco/frame-001.jpg" },
+  { frameId: "002", src: "assets/aruco/frame-002.jpg" },
+  { frameId: "003", src: "assets/aruco/frame-003.jpg" },
+  { frameId: "004", src: "assets/aruco/frame-004.jpg" },
+  { frameId: "005", src: "assets/aruco/frame-005.jpg" },
+  { frameId: "006", src: "assets/aruco/frame-006.jpg" }
+];
+
+let knownMarkerPatterns = [];
 
 let stream = null;
 let images = [];
@@ -30,6 +49,7 @@ startCameraButton.addEventListener("click", startCamera);
 scanFrameButton.addEventListener("click", scanFrame);
 
 loadImages();
+loadKnownMarkerPatterns();
 
 async function startCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -108,32 +128,37 @@ function scanFrame() {
     return;
   }
 
-  debugLog_func("🔍 Looking for image with frameId: " + marker.id);
-  const match = findImageByFrame(marker.id);
+  debugLog_func("🔍 Looking for image with frameId: " + marker.frameId);
+  const match = findImageByFrame(marker.frameId);
 
   if (!match) {
-    debugLog_func("❌ No image found for frame " + marker.id);
+    debugLog_func("❌ No image found for frame " + marker.frameId);
     clearMatch();
     setStatus(`Riconosciuta ${marker.label}, ma nessun disegno risulta associato.`, true);
     matchInfo.textContent = "Controlla che un disegno sia stato proiettato in quella cornice.";
     return;
   }
 
-  debugLog_func("✅ Found image for frame " + marker.id);
+  debugLog_func("✅ Found image for frame " + marker.frameId);
   showMatch(match, marker);
   setStatus(`Riconosciuta ${marker.label}: disegno trovato.`);
 }
 
 function findImageByFrame(frameId) {
-  debugLog_func("🔎 Searching in " + images.length + " images for frameId=" + frameId);
+  const normalizedFrameId = normalizeFrameId(frameId);
+  debugLog_func("🔎 Searching in " + images.length + " images for frameId=" + normalizedFrameId);
+
   for (let i = 0; i < images.length; i++) {
     const img = images[i];
-    debugLog_func("  [" + i + "] has frameId=" + (img.frame?.id || "none"));
-    if (img.frame?.id === frameId) {
+    const imageFrameId = normalizeFrameId(img.frame?.id);
+    debugLog_func("  [" + i + "] has frameId=" + (imageFrameId || "none"));
+
+    if (imageFrameId === normalizedFrameId) {
       debugLog_func("  ✓ MATCH!");
       return img;
     }
   }
+
   return null;
 }
 
@@ -193,24 +218,30 @@ function detectFrameMarker(sourceCanvas) {
 
   const grid = sampleMarkerGrid(luminance, sampleSize, threshold, bounds, 6);
   const borderScore = getBorderScore(grid);
-
-  if (borderScore < 0.01) {
-    debugLog_func("❌ Border score too low: " + borderScore + " < 0.01");
-    return null;
-  }
-
   const bits = getInnerBits(grid);
   const bitsStr = bits.join("");
   const numericId = parseInt(bitsStr, 2);
-  const id = String(Number.isFinite(numericId) ? numericId : 0).padStart(3, "0");
+  const rawId = String(Number.isFinite(numericId) ? numericId : 0);
+  const mappedFrameId = rawMarkerToFrame[rawId];
+  const patternMatch = findClosestKnownMarker(bitsStr);
+  const frameId = mappedFrameId || patternMatch?.frameId || normalizeFrameId(rawId);
 
   debugLog_func("📍 Extracted bits: " + bitsStr);
-  debugLog_func("🔢 Decoded ID: " + numericId + " → Formatted: " + id);
-  debugLog_func("✅ Marker detected! ID: " + id + ", borderScore: " + borderScore);
+  debugLog_func("🔢 Decoded raw ID: " + rawId);
+  debugLog_func("🧭 Raw map: " + (mappedFrameId || "none"));
+  debugLog_func("🧩 Pattern match: " + (patternMatch ? patternMatch.frameId + " (distance " + patternMatch.distance + ")" : "none"));
+
+  if (!mappedFrameId && !patternMatch && borderScore < 0.01) {
+    debugLog_func("❌ Border score too low and no known pattern match: " + borderScore);
+    return null;
+  }
+
+  debugLog_func("✅ Marker detected! Frame: " + frameId + ", raw ID: " + rawId + ", borderScore: " + borderScore);
 
   return {
-    id,
-    label: `Cornice ${id}`,
+    frameId,
+    rawId,
+    label: `Cornice ${frameId}`,
     confidence: Number(borderScore.toFixed(2))
   };
 }
@@ -265,9 +296,10 @@ function findDarkBounds(luminance, size, threshold) {
 
 function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
   const grid = [];
-  const squareSize = Math.max(bounds.width, bounds.height);
-  const startX = Math.round((bounds.minX + bounds.maxX - squareSize) / 2);
-  const startY = Math.round((bounds.minY + bounds.maxY - squareSize) / 2);
+  const startX = bounds.minX;
+  const startY = bounds.minY;
+  const sampleWidth = Math.max(1, bounds.width);
+  const sampleHeight = Math.max(1, bounds.height);
   const darkLimit = Math.min(128, threshold + 8);
   debugLog_func("🎯 sampleMarkerGrid using darkLimit: " + darkLimit + " (threshold: " + threshold + ")");
 
@@ -275,10 +307,10 @@ function sampleMarkerGrid(luminance, imageSize, threshold, bounds, gridSize) {
     const cells = [];
 
     for (let col = 0; col < gridSize; col += 1) {
-      const x0 = Math.round(startX + (col / gridSize) * squareSize);
-      const x1 = Math.round(startX + ((col + 1) / gridSize) * squareSize);
-      const y0 = Math.round(startY + (row / gridSize) * squareSize);
-      const y1 = Math.round(startY + ((row + 1) / gridSize) * squareSize);
+      const x0 = Math.round(startX + (col / gridSize) * sampleWidth);
+      const x1 = Math.round(startX + ((col + 1) / gridSize) * sampleWidth);
+      const y0 = Math.round(startY + (row / gridSize) * sampleHeight);
+      const y1 = Math.round(startY + ((row + 1) / gridSize) * sampleHeight);
       let darkPixels = 0;
       let totalPixels = 0;
 
@@ -369,6 +401,130 @@ function getOtsuThreshold(histogram) {
   }
 
   return threshold;
+}
+
+async function loadKnownMarkerPatterns() {
+  const patterns = [];
+
+  for (const marker of knownMarkerSources) {
+    try {
+      const image = await loadImage(marker.src);
+      const markerCanvas = document.createElement("canvas");
+      const markerContext = markerCanvas.getContext("2d", { willReadFrequently: true });
+      markerCanvas.width = image.naturalWidth;
+      markerCanvas.height = image.naturalHeight;
+      markerContext.drawImage(image, 0, 0);
+      const pattern = extractMarkerBits(markerCanvas);
+
+      if (pattern) {
+        patterns.push({ frameId: marker.frameId, bits: pattern });
+      }
+    } catch (error) {
+      console.warn("Unable to load known marker", marker.src, error);
+    }
+  }
+
+  knownMarkerPatterns = patterns;
+  debugLog_func("🧩 Loaded " + knownMarkerPatterns.length + " known marker patterns");
+}
+
+function extractMarkerBits(sourceCanvas) {
+  const context = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  const image = context.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+  const luminance = [];
+
+  for (let index = 0; index < image.data.length; index += 4) {
+    luminance.push(getLuminance(image.data[index], image.data[index + 1], image.data[index + 2]));
+  }
+
+  const threshold = getOtsuThreshold(buildHistogram(luminance));
+  const bounds = findDarkBounds(luminance, sourceCanvas.width, threshold);
+
+  if (!bounds) {
+    return null;
+  }
+
+  const grid = sampleMarkerGrid(luminance, sourceCanvas.width, threshold, bounds, 6);
+  return getInnerBits(grid).join("");
+}
+
+function findClosestKnownMarker(bitsStr) {
+  let bestMatch = null;
+
+  for (const knownMarker of knownMarkerPatterns) {
+    for (const variant of getBitVariants(knownMarker.bits)) {
+      const distance = getHammingDistance(bitsStr, variant);
+
+      if (!bestMatch || distance < bestMatch.distance) {
+        bestMatch = {
+          frameId: knownMarker.frameId,
+          distance
+        };
+      }
+    }
+  }
+
+  return bestMatch && bestMatch.distance <= 3 ? bestMatch : null;
+}
+
+function getBitVariants(bitsStr) {
+  const grid = [];
+  let index = 0;
+
+  for (let row = 0; row < 4; row += 1) {
+    const cells = [];
+
+    for (let col = 0; col < 4; col += 1) {
+      cells.push(bitsStr[index++]);
+    }
+
+    grid.push(cells);
+  }
+
+  const variants = [];
+  let current = grid;
+
+  for (let turn = 0; turn < 4; turn += 1) {
+    variants.push(current.flat().join(""));
+    current = rotateGrid(current);
+  }
+
+  return variants;
+}
+
+function rotateGrid(grid) {
+  return grid[0].map((_, index) => grid.map((row) => row[index]).reverse());
+}
+
+function getHammingDistance(a, b) {
+  if (a.length !== b.length) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let distance = 0;
+
+  for (let index = 0; index < a.length; index += 1) {
+    distance += a[index] === b[index] ? 0 : 1;
+  }
+
+  return distance;
+}
+
+function normalizeFrameId(frameId) {
+  if (!frameId) {
+    return "";
+  }
+
+  return String(frameId).padStart(3, "0");
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
 }
 
 function readLocalImages() {

@@ -605,3 +605,20 @@ video {
     grid-template-columns: 1fr;
   }
 }
+
+
+.marker-image {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+  background: #ffffff;
+}
+
+.marker-meta {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-weight: 800;
+}

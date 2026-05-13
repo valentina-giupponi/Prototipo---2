@@ -1,38 +1,32 @@
 const markerGrid = document.querySelector("#markerGrid");
-const frames = ["001", "002", "003", "004", "005", "006"];
 
-for (const frameId of frames) {
-  const frameNum = Number(frameId);
-  
-  if (frameNum < 0 || frameNum > 65535) {
-    console.warn("Frame ID " + frameId + " out of range [0-65535]");
-    continue;
-  }
-  
+const markers = [
+  { frameId: "001", arucoLabel: "Marker 1", rawId: "102", src: "assets/aruco/frame-001.jpg" },
+  { frameId: "002", arucoLabel: "Marker 2", rawId: "1654", src: "assets/aruco/frame-002.jpg" },
+  { frameId: "003", arucoLabel: "Marker 3", rawId: "100", src: "assets/aruco/frame-003.jpg" },
+  { frameId: "004", arucoLabel: "Marker 4", rawId: "119", src: "assets/aruco/frame-004.jpg" },
+  { frameId: "005", arucoLabel: "Marker 5", rawId: "pattern", src: "assets/aruco/frame-005.jpg" },
+  { frameId: "006", arucoLabel: "Marker 6", rawId: "30583", src: "assets/aruco/frame-006.jpg" }
+];
+
+for (const marker of markers) {
   const card = document.createElement("article");
   card.className = "marker-card";
 
   const title = document.createElement("h2");
-  title.textContent = `Cornice ${frameId}`;
+  title.textContent = `Cornice ${marker.frameId}`;
 
-  const marker = document.createElement("div");
-  marker.className = "marker-code";
-  marker.setAttribute("aria-label", `Marker Cornice ${frameId}`);
+  const img = document.createElement("img");
+  img.className = "marker-image";
+  img.src = marker.src;
+  img.alt = `${marker.arucoLabel} associato alla cornice ${marker.frameId}`;
 
-  const bits = frameNum.toString(2).padStart(16, "0").split("").map(Number);
-  let bitIndex = 0;
+  const meta = document.createElement("p");
+  meta.className = "marker-meta";
+  meta.textContent = marker.rawId === "pattern"
+    ? `${marker.arucoLabel} · riconoscimento pattern`
+    : `${marker.arucoLabel} · ID letto ${marker.rawId}`;
 
-  for (let row = 0; row < 6; row += 1) {
-    for (let col = 0; col < 6; col += 1) {
-      const cell = document.createElement("span");
-      const isBorder = row === 0 || col === 0 || row === 5 || col === 5;
-      const bitValue = isBorder ? 1 : bits[bitIndex++];
-      const isDark = bitValue === 1;
-      cell.className = isDark ? "is-dark" : "";
-      marker.append(cell);
-    }
-  }
-
-  card.append(title, marker);
+  card.append(title, img, meta);
   markerGrid.append(card);
 }
