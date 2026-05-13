@@ -7,15 +7,7 @@ const cameraMessage = document.querySelector("#cameraMessage");
 const matchedImage = document.querySelector("#matchedImage");
 const matchPlaceholder = document.querySelector("#matchPlaceholder");
 const matchInfo = document.querySelector("#matchInfo");
-const debugLog = document.querySelector("#debugLog");
-const debugContent = document.querySelector("#debugContent");
-
-let debugMessages = [];
 function debugLog_func(msg) {
-  debugMessages.push(msg);
-  if (debugMessages.length > 20) debugMessages.shift();
-  if (debugContent) debugContent.textContent = debugMessages.join("\n");
-  if (debugLog) debugLog.style.display = "block";
   console.log(msg);
 }
 
