@@ -14,6 +14,7 @@ const confirmPreview = document.querySelector("#confirmPreview");
 const retakeScanButton = document.querySelector("#retakeScan");
 const confirmScanButton = document.querySelector("#confirmScan");
 const confirmStatus = document.querySelector("#confirmStatus");
+const returnToScanButton = document.querySelector("#returnToScan");
 
 const usesBrowserStorage = location.protocol === "file:";
 const localImageKey = "drawing-scan-prototype.latest";
@@ -21,7 +22,6 @@ const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
 const maxScanSize = 1800;
 const analysisDelay = 1600;
-const wallNoticeDelay = 10000;
 const frameSlots = [
   { id: "001", label: "Cornice 001", position: { x: 0.25, y: 0.25 } },
   { id: "002", label: "Cornice 002", position: { x: 0.75, y: 0.25 } },
@@ -33,13 +33,13 @@ const frameSlots = [
 
 let stream = null;
 let pendingImageData = null;
-let noticeTimeout = null;
 
 startCameraButton.addEventListener("click", startCamera);
 takePhotoButton.addEventListener("click", takePhoto);
 fileInput.addEventListener("change", uploadSelectedFile);
 retakeScanButton.addEventListener("click", discardPendingScan);
 confirmScanButton.addEventListener("click", confirmPendingScan);
+returnToScanButton.addEventListener("click", returnToScan);
 
 async function startCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -83,7 +83,7 @@ async function takePhoto() {
     return;
   }
 
-  drawToCanvas(camera, width, height);
+  drawVisibleCameraToCanvas();
   const imageData = scanModeCheckbox.checked
     ? scanDrawingFromCanvas(canvas)
     : canvas.toDataURL("image/png", 0.95);
@@ -141,12 +141,9 @@ async function confirmPendingScan() {
     const image = await saveImage(pendingImageData);
     pendingImageData = null;
     confirmPreview.removeAttribute("src");
+    confirmScanButton.disabled = false;
     showView(wallNoticeView);
-    window.setTimeout(() => {
-      showView(captureView);
-      setStatus("Disegno salvato in " + (image.frame?.label || "parete") + ". Puoi scansionarne un altro.");
-      confirmScanButton.disabled = false;
-    }, wallNoticeDelay);
+    setStatus("Disegno salvato in " + (image.frame?.label || "parete") + ". Puoi scansionarne un altro.");
   } catch (error) {
     console.error(error);
     confirmStatus.textContent = "Non sono riuscito a salvare il disegno.";
@@ -190,8 +187,12 @@ function saveLocalImage(imageData) {
   return image;
 }
 
+function returnToScan() {
+  showView(captureView);
+  setStatus("Puoi scansionare un nuovo disegno.");
+}
+
 function showView(view) {
-  window.clearTimeout(noticeTimeout);
   for (const screen of [captureView, loadingView, confirmView, wallNoticeView]) {
     const isActive = screen === view;
     screen.hidden = !isActive;
@@ -235,6 +236,28 @@ async function createImageDataFromFile(file) {
   return canvas.toDataURL("image/png", 0.95);
 }
 
+function drawVisibleCameraToCanvas() {
+  const sourceWidth = camera.videoWidth;
+  const sourceHeight = camera.videoHeight;
+  const viewport = camera.getBoundingClientRect();
+  const viewportAspect = viewport.width / viewport.height;
+  const sourceAspect = sourceWidth / sourceHeight;
+  let cropX = 0;
+  let cropY = 0;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+
+  if (sourceAspect > viewportAspect) {
+    cropWidth = Math.round(sourceHeight * viewportAspect);
+    cropX = Math.round((sourceWidth - cropWidth) / 2);
+  } else {
+    cropHeight = Math.round(sourceWidth / viewportAspect);
+    cropY = Math.round((sourceHeight - cropHeight) / 2);
+  }
+
+  drawCroppedToCanvas(camera, cropX, cropY, cropWidth, cropHeight);
+}
+
 function drawToCanvas(source, sourceWidth, sourceHeight) {
   const scale = Math.min(1, maxScanSize / Math.max(sourceWidth, sourceHeight));
   const width = Math.round(sourceWidth * scale);
@@ -245,6 +268,18 @@ function drawToCanvas(source, sourceWidth, sourceHeight) {
   canvas.height = height;
   context.clearRect(0, 0, width, height);
   context.drawImage(source, 0, 0, width, height);
+}
+
+function drawCroppedToCanvas(source, sourceX, sourceY, sourceWidth, sourceHeight) {
+  const scale = Math.min(1, maxScanSize / Math.max(sourceWidth, sourceHeight));
+  const width = Math.round(sourceWidth * scale);
+  const height = Math.round(sourceHeight * scale);
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+
+  canvas.width = width;
+  canvas.height = height;
+  context.clearRect(0, 0, width, height);
+  context.drawImage(source, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
 }
 
 function scanDrawingFromCanvas(sourceCanvas) {
@@ -258,20 +293,24 @@ function scanDrawingFromCanvas(sourceCanvas) {
     histogram[luminance] += 1;
   }
 
-  const paperTone = getHistogramPercentile(histogram, 0.78);
-  const rawThreshold = Math.min(188, paperTone - 52, Math.max(95, getOtsuThreshold(histogram) + 18));
-  const threshold = Math.max(72, rawThreshold);
-  const edgeSoftness = 42;
+  const paperTone = getHistogramPercentile(histogram, 0.84);
+  const darkTone = getHistogramPercentile(histogram, 0.08);
+  const otsuThreshold = getOtsuThreshold(histogram);
+  const threshold = clamp(Math.min(132, paperTone - 92, Math.max(darkTone + 34, otsuThreshold - 28)), 52, 132);
+  const hardCutoff = Math.min(138, threshold + 8);
+  const edgeSoftness = 24;
 
   for (let index = 0; index < data.length; index += 4) {
     const luminance = getLuminance(data[index], data[index + 1], data[index + 2]);
-    const ink = clamp((threshold - luminance) / edgeSoftness, 0, 1);
+    const ink = luminance <= hardCutoff
+      ? clamp((threshold - luminance) / edgeSoftness, 0, 1)
+      : 0;
     const alpha = Math.round(smoothStep(ink) * 255);
 
     data[index] = 18;
     data[index + 1] = 22;
     data[index + 2] = 26;
-    data[index + 3] = alpha < 18 ? 0 : alpha;
+    data[index + 3] = alpha < 72 ? 0 : alpha;
   }
 
   context.putImageData(image, 0, 0);
