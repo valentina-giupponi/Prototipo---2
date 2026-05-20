@@ -7,30 +7,28 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body class="capture-page">
-    <main class="app-shell">
-      <section class="capture-workspace" aria-label="Scansione disegno">
+    <main class="mobile-flow">
+      <section id="captureView" class="flow-screen is-active" aria-label="Scansione disegno">
         <div class="topbar">
           <div>
-            <p class="eyebrow">Prototipo scanner</p>
-            <h1>Acquisisci il disegno</h1>
+            <p class="eyebrow">Scansione disegno</p>
+            <h1>Scansiona il disegno</h1>
           </div>
           <div class="nav-actions">
             <a class="screen-link" href="frame.html">Scansiona cornice</a>
-            <a class="screen-link" href="display.html" target="_blank" rel="noreferrer">Apri schermo</a>
+            <a class="screen-link" href="display.html" target="_blank" rel="noreferrer">Apri parete</a>
           </div>
         </div>
 
         <div class="camera-panel">
           <video id="camera" autoplay playsinline muted></video>
           <canvas id="snapshot" hidden></canvas>
-          <div id="cameraMessage" class="camera-message">
-            Premi “Attiva camera” per iniziare.
-          </div>
+          <div id="cameraMessage" class="camera-message">Premi “Attiva camera” per iniziare.</div>
         </div>
 
         <div class="controls">
           <button id="startCamera" type="button">Attiva camera</button>
-          <button id="takePhoto" type="button" disabled>Scatta e invia</button>
+          <button id="takePhoto" type="button" disabled>Scansiona disegno</button>
           <label class="file-button" for="fileInput">Carica immagine</label>
           <input id="fileInput" type="file" accept="image/*">
           <label class="toggle-control">
@@ -39,18 +37,39 @@
           </label>
         </div>
 
-        <p id="status" class="status" role="status">Nessuna immagine inviata.</p>
+        <p id="status" class="status" role="status">Nessuna scansione acquisita.</p>
       </section>
 
-      <aside class="preview-panel" aria-label="Ultima immagine inviata">
-        <p class="eyebrow">Ultimo invio</p>
-        <div class="preview-frame">
-          <img id="preview" alt="Anteprima dell'ultima immagine acquisita">
-          <span id="previewPlaceholder">Qui apparirà la foto scattata.</span>
+      <section id="loadingView" class="flow-screen flow-message" aria-label="Analisi disegno" hidden>
+        <p class="eyebrow">Analisi</p>
+        <h1>Stiamo analizzando il tuo disegno</h1>
+        <div class="loader" aria-hidden="true"></div>
+      </section>
+
+      <section id="confirmView" class="flow-screen" aria-label="Conferma scansione" hidden>
+        <div class="topbar">
+          <div>
+            <p class="eyebrow">Conferma scansione</p>
+            <h1>Visualizza disegno</h1>
+          </div>
         </div>
-        <p id="lastSaved" class="muted">Il disegno verrà assegnato automaticamente a una cornice.</p>
-        <button id="deletePhoto" class="delete-button" type="button" disabled>Elimina ultima foto</button>
-      </aside>
+
+        <div class="scan-preview">
+          <img id="confirmPreview" alt="Disegno scansionato da confermare">
+        </div>
+
+        <div class="controls confirm-controls">
+          <button id="retakeScan" class="secondary-button" type="button">Torno indietro</button>
+          <button id="confirmScan" type="button">Conferma scansione</button>
+        </div>
+
+        <p id="confirmStatus" class="status" role="status">Controlla il disegno prima di salvarlo.</p>
+      </section>
+
+      <section id="wallNoticeView" class="flow-screen flow-message wall-notice" aria-label="Messaggio parete" hidden>
+        <p class="eyebrow">Parete</p>
+        <h1>Occhi alla parete, il tuo disegno sta per prendere vita</h1>
+      </section>
     </main>
 
     <script src="capture.js"></script>

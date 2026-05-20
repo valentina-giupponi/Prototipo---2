@@ -56,6 +56,10 @@ const server = http.createServer(async (req, res) => {
       return handleUpload(req, res);
     }
 
+    if (req.method === "POST" && url.pathname === "/api/reassign-frame") {
+      return handleReassignFrame(req, res);
+    }
+
     if (req.method === "DELETE" && url.pathname === "/api/latest") {
       return handleDeleteLatest(res);
     }
@@ -175,6 +179,33 @@ async function handleUpload(req, res) {
   sendJson(res, image, 201);
 }
 
+async function handleReassignFrame(req, res) {
+  const body = await readBody(req);
+  const payload = JSON.parse(body || "{}");
+  const imageId = String(payload.imageId || "").trim();
+  const fromFrameId = normalizeFrameId(payload.fromFrameId);
+  const imageIndex = images.findIndex((image) => image.id === imageId);
+
+  if (imageIndex < 0) {
+    return sendJson(res, { error: "Image not found" }, 404);
+  }
+
+  const destination = chooseDestinationFrame(fromFrameId, imageId);
+  const image = {
+    ...images[imageIndex],
+    frame: {
+      ...destination,
+      confidence: 1,
+      detectedAt: new Date().toISOString()
+    },
+    movedAt: new Date().toISOString()
+  };
+
+  images[imageIndex] = image;
+  broadcastMove(image);
+  sendJson(res, image);
+}
+
 function handleDeleteLatest(res) {
   const deletedImage = images.pop();
 
@@ -213,12 +244,33 @@ function broadcast(image) {
   }
 }
 
+function broadcastMove(image) {
+  const event = `event: move\ndata: ${JSON.stringify(image)}\n\n`;
+
+  for (const client of clients) {
+    client.write(event);
+  }
+}
+
 function broadcastDelete(image) {
   const event = `event: delete\ndata: ${JSON.stringify({ id: image?.id || null })}\n\n`;
 
   for (const client of clients) {
     client.write(event);
   }
+}
+
+function chooseDestinationFrame(fromFrameId, imageId) {
+  const occupiedFrameIds = new Set(
+    images
+      .filter((image) => image.id !== imageId)
+      .map((image) => normalizeFrameId(image.frame?.id))
+      .filter((frameId) => frameId && frameId !== fromFrameId)
+  );
+  const occupiedCandidates = frameSlots.filter((frame) => occupiedFrameIds.has(frame.id));
+  const fallbackCandidates = frameSlots.filter((frame) => frame.id !== fromFrameId);
+  const candidates = occupiedCandidates.length > 0 ? occupiedCandidates : fallbackCandidates;
+  return candidates[Math.floor(Math.random() * candidates.length)] || frameSlots[0];
 }
 
 function getFrameSlot(index) {
@@ -228,6 +280,10 @@ function getFrameSlot(index) {
     confidence: 1,
     detectedAt: new Date().toISOString()
   };
+}
+
+function normalizeFrameId(frameId) {
+  return String(frameId || "").padStart(3, "0");
 }
 
 function normalizeFrame(frame) {
@@ -266,10 +322,11 @@ function loadImages() {
       stat: fs.statSync(path.join(UPLOADS_DIR, file))
     }))
     .sort((a, b) => a.stat.mtimeMs - b.stat.mtimeMs)
-    .map(({ file, stat }) => ({
+    .map(({ file, stat }, index) => ({
       id: path.parse(file).name,
       filename: file,
       url: `/uploads/${file}`,
+      frame: getFrameSlot(index),
       createdAt: stat.mtime.toISOString()
     }));
 }

@@ -7,6 +7,14 @@ const usesBrowserStorage = location.protocol === "file:";
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
+const frameSlots = [
+  { id: "001", label: "Cornice 001" },
+  { id: "002", label: "Cornice 002" },
+  { id: "003", label: "Cornice 003" },
+  { id: "004", label: "Cornice 004" },
+  { id: "005", label: "Cornice 005" },
+  { id: "006", label: "Cornice 006" }
+];
 
 let images = [];
 
@@ -36,6 +44,11 @@ function connectToImageEvents() {
     imageChannel?.addEventListener("message", (event) => {
       if (event.data?.type === "delete") {
         removeImage(event.data.id);
+        return;
+      }
+
+      if (event.data?.type === "move") {
+        updateImage(event.data.image);
         return;
       }
 
@@ -70,6 +83,10 @@ function connectToImageEvents() {
     addImage(JSON.parse(event.data));
   });
 
+  events.addEventListener("move", (event) => {
+    updateImage(JSON.parse(event.data));
+  });
+
   events.addEventListener("delete", (event) => {
     const payload = JSON.parse(event.data);
     removeImage(payload?.id || null);
@@ -89,32 +106,57 @@ function addImage(image) {
   renderImages();
 }
 
+function updateImage(image) {
+  if (!image?.id) {
+    return;
+  }
+
+  images = images.map((item) => (item.id === image.id ? image : item));
+  renderImages(image.id);
+}
+
 function removeImage(id) {
   images = id ? images.filter((image) => image.id !== id) : images.slice(0, -1);
   renderImages();
 }
 
-function renderImages() {
+function renderImages(activeImageId = null) {
   displayWall.replaceChildren();
   emptyState.hidden = images.length > 0;
 
-  for (const image of images) {
+  for (const frame of frameSlots) {
+    const frameImages = images.filter((image, index) => getDisplayFrameId(image, index) === frame.id);
     const figure = document.createElement("figure");
-    figure.className = "drawing-tile";
+    figure.className = "wall-frame";
+    figure.dataset.frame = frame.id;
 
-    const img = document.createElement("img");
-    img.src = image.dataUrl || `${image.url}?t=${Date.now()}`;
-    img.alt = "Disegno caricato";
-
-    figure.append(img);
-
-    if (image.frame) {
-      const badge = document.createElement("figcaption");
-      badge.className = "frame-badge";
-      badge.textContent = formatFrameLabel(image.frame);
-      figure.append(badge);
+    if (frameImages.some((image) => image.id === activeImageId)) {
+      figure.classList.add("is-active");
     }
 
+    const artLayer = document.createElement("div");
+    artLayer.className = "wall-frame-art";
+
+    if (frameImages.length === 0) {
+      const placeholder = document.createElement("span");
+      placeholder.textContent = "Cornice libera";
+      placeholder.className = "wall-frame-placeholder";
+      artLayer.append(placeholder);
+    } else {
+      frameImages.forEach((image, index) => {
+        const img = document.createElement("img");
+        img.src = image.dataUrl || image.url;
+        img.alt = "Disegno caricato";
+        img.style.setProperty("--layer-index", index);
+        img.style.setProperty("--layer-count", frameImages.length);
+        artLayer.append(img);
+      });
+    }
+
+    const caption = document.createElement("figcaption");
+    caption.textContent = frame.label + (frameImages.length > 1 ? " · composizione" : "");
+
+    figure.append(artLayer, caption);
     displayWall.append(figure);
   }
 
@@ -132,14 +174,12 @@ function renderImages() {
   }).format(new Date(latestImage.createdAt));
 }
 
-function formatFrameLabel(frame) {
-  if (!frame?.position) {
-    return frame?.label || "Cornice";
-  }
+function getDisplayFrameId(image, index) {
+  return normalizeFrameId(image.frame?.id) || frameSlots[index % frameSlots.length].id;
+}
 
-  const x = Math.round(frame.position.x * 100);
-  const y = Math.round(frame.position.y * 100);
-  return `${frame.label} · ${x}%, ${y}%`;
+function normalizeFrameId(frameId) {
+  return frameId ? String(frameId).padStart(3, "0") : "";
 }
 
 function readLocalImages() {

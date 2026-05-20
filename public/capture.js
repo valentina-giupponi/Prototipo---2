@@ -6,16 +6,22 @@ const fileInput = document.querySelector("#fileInput");
 const scanModeCheckbox = document.querySelector("#scanMode");
 const statusText = document.querySelector("#status");
 const cameraMessage = document.querySelector("#cameraMessage");
-const preview = document.querySelector("#preview");
-const previewPlaceholder = document.querySelector("#previewPlaceholder");
-const lastSaved = document.querySelector("#lastSaved");
-const deletePhotoButton = document.querySelector("#deletePhoto");
+const captureView = document.querySelector("#captureView");
+const loadingView = document.querySelector("#loadingView");
+const confirmView = document.querySelector("#confirmView");
+const wallNoticeView = document.querySelector("#wallNoticeView");
+const confirmPreview = document.querySelector("#confirmPreview");
+const retakeScanButton = document.querySelector("#retakeScan");
+const confirmScanButton = document.querySelector("#confirmScan");
+const confirmStatus = document.querySelector("#confirmStatus");
 
 const usesBrowserStorage = location.protocol === "file:";
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
 const maxScanSize = 1800;
+const analysisDelay = 1600;
+const wallNoticeDelay = 10000;
 const frameSlots = [
   { id: "001", label: "Cornice 001", position: { x: 0.25, y: 0.25 } },
   { id: "002", label: "Cornice 002", position: { x: 0.75, y: 0.25 } },
@@ -26,13 +32,14 @@ const frameSlots = [
 ];
 
 let stream = null;
+let pendingImageData = null;
+let noticeTimeout = null;
 
 startCameraButton.addEventListener("click", startCamera);
 takePhotoButton.addEventListener("click", takePhoto);
 fileInput.addEventListener("change", uploadSelectedFile);
-deletePhotoButton.addEventListener("click", deletePhoto);
-
-loadLatestImage();
+retakeScanButton.addEventListener("click", discardPendingScan);
+confirmScanButton.addEventListener("click", confirmPendingScan);
 
 async function startCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -55,7 +62,7 @@ async function startCamera() {
     takePhotoButton.disabled = false;
     startCameraButton.textContent = "Camera attiva";
     startCameraButton.disabled = true;
-    setStatus("Camera pronta. Inquadra il foglio e scatta.");
+    setStatus("Camera pronta. Inquadra il foglio e scansiona.");
   } catch (error) {
     console.error(error);
     setStatus("Permesso camera negato o non disponibile. Puoi caricare un'immagine.", true);
@@ -76,14 +83,12 @@ async function takePhoto() {
     return;
   }
 
-  setStatus(scanModeCheckbox.checked ? "Scansione del tratto..." : "Preparazione immagine...");
   drawToCanvas(camera, width, height);
-
   const imageData = scanModeCheckbox.checked
     ? scanDrawingFromCanvas(canvas)
     : canvas.toDataURL("image/png", 0.95);
 
-  await uploadImage(imageData);
+  await prepareScanForConfirmation(imageData);
 }
 
 async function uploadSelectedFile(event) {
@@ -92,162 +97,106 @@ async function uploadSelectedFile(event) {
     return;
   }
 
-  setStatus(scanModeCheckbox.checked ? "Scansione del tratto..." : "Preparazione immagine...");
-  const imageData = await createImageDataFromFile(file);
-  await uploadImage(imageData);
-  fileInput.value = "";
-}
-
-async function uploadImage(imageData) {
-  if (usesBrowserStorage) {
-    saveLocalImage(imageData);
-    return;
-  }
-
-  setStatus("Invio immagine al server...");
-  takePhotoButton.disabled = true;
-
   try {
-    const response = await fetch("api/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: imageData })
-    });
-
-    if (!response.ok) {
-      throw new Error("Upload failed");
-    }
-
-    const image = await response.json();
-    showPreview(image);
-    setStatus("Immagine salvata e proiettata nella griglia.");
+    const imageData = await createImageDataFromFile(file);
+    await prepareScanForConfirmation(imageData);
   } catch (error) {
     console.error(error);
-    setStatus("Non sono riuscito a salvare l'immagine.", true);
+    setStatus("Non sono riuscito a leggere l'immagine.", true);
   } finally {
-    takePhotoButton.disabled = !stream;
+    fileInput.value = "";
   }
 }
 
-async function loadLatestImage() {
-  if (usesBrowserStorage) {
-    const image = readLocalImages().at(-1);
+async function prepareScanForConfirmation(imageData) {
+  pendingImageData = imageData;
+  showView(loadingView);
+  await wait(analysisDelay);
+  confirmPreview.src = pendingImageData;
+  confirmStatus.textContent = "Controlla il disegno prima di salvarlo.";
+  confirmStatus.classList.remove("error");
+  confirmScanButton.disabled = false;
+  showView(confirmView);
+}
 
-    if (image) {
-      showPreview(image);
-    }
+function discardPendingScan() {
+  pendingImageData = null;
+  confirmPreview.removeAttribute("src");
+  showView(captureView);
+  setStatus("Scansione annullata. Puoi acquisire un nuovo disegno.");
+}
 
+async function confirmPendingScan() {
+  if (!pendingImageData) {
+    confirmStatus.textContent = "Nessuna scansione da confermare.";
+    confirmStatus.classList.add("error");
     return;
   }
 
-  try {
-    const response = await fetch("api/images");
-    const images = await response.json();
-    const image = images.at(-1);
+  confirmScanButton.disabled = true;
+  confirmStatus.textContent = "Salvataggio del disegno...";
+  confirmStatus.classList.remove("error");
 
-    if (image) {
-      showPreview(image);
-    }
+  try {
+    const image = await saveImage(pendingImageData);
+    pendingImageData = null;
+    confirmPreview.removeAttribute("src");
+    showView(wallNoticeView);
+    window.setTimeout(() => {
+      showView(captureView);
+      setStatus("Disegno salvato in " + (image.frame?.label || "parete") + ". Puoi scansionarne un altro.");
+      confirmScanButton.disabled = false;
+    }, wallNoticeDelay);
   } catch (error) {
     console.error(error);
+    confirmStatus.textContent = "Non sono riuscito a salvare il disegno.";
+    confirmStatus.classList.add("error");
+    confirmScanButton.disabled = false;
   }
 }
 
-function showPreview(image) {
-  preview.src = image.dataUrl || `${image.url}?t=${Date.now()}`;
-  preview.hidden = false;
-  previewPlaceholder.hidden = true;
-  deletePhotoButton.disabled = false;
-  lastSaved.textContent = image.frame
-    ? `Proiettata in ${image.frame.label}`
-    : "Disegno salvato senza cornice.";
+async function saveImage(imageData) {
+  if (usesBrowserStorage) {
+    return saveLocalImage(imageData);
+  }
+
+  const response = await fetch("api/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: imageData })
+  });
+
+  if (!response.ok) {
+    throw new Error("Upload failed");
+  }
+
+  return response.json();
 }
 
 function saveLocalImage(imageData) {
-  try {
-    const images = readLocalImages();
-    const frame = getFrameSlot(images.length);
-    const image = {
-      id: String(Date.now()),
-      dataUrl: imageData,
-      frame,
-      createdAt: new Date().toISOString()
-    };
+  const images = readLocalImages();
+  const frame = getFrameSlot(images.length);
+  const image = {
+    id: String(Date.now()),
+    dataUrl: imageData,
+    frame,
+    createdAt: new Date().toISOString()
+  };
 
-    images.push(image);
-    localStorage.setItem(localImagesKey, JSON.stringify(images));
-    localStorage.setItem(localImageKey, JSON.stringify(image));
-    imageChannel?.postMessage({ type: "image", image });
-    showPreview(image);
-    setStatus(`Immagine salvata e proiettata in ${frame.label}.`);
-  } catch (error) {
-    console.error(error);
-    setStatus("Immagine troppo grande per la modalità interna. Prova con un file più leggero.", true);
-  }
+  images.push(image);
+  localStorage.setItem(localImagesKey, JSON.stringify(images));
+  localStorage.setItem(localImageKey, JSON.stringify(image));
+  imageChannel?.postMessage({ type: "image", image });
+  return image;
 }
 
-async function deletePhoto() {
-  if (usesBrowserStorage) {
-    clearLocalImage();
-    return;
+function showView(view) {
+  window.clearTimeout(noticeTimeout);
+  for (const screen of [captureView, loadingView, confirmView, wallNoticeView]) {
+    const isActive = screen === view;
+    screen.hidden = !isActive;
+    screen.classList.toggle("is-active", isActive);
   }
-
-  setStatus("Eliminazione foto...");
-  deletePhotoButton.disabled = true;
-
-  try {
-    const response = await fetch("api/latest", { method: "DELETE" });
-
-    if (!response.ok) {
-      throw new Error("Delete failed");
-    }
-
-    const result = await response.json();
-
-    if (result.image) {
-      showPreview(result.image);
-    } else {
-      clearPreview();
-    }
-
-    setStatus("Foto eliminata.");
-  } catch (error) {
-    console.error(error);
-    deletePhotoButton.disabled = false;
-    setStatus("Non sono riuscito a eliminare la foto.", true);
-  }
-}
-
-function clearLocalImage() {
-  try {
-    const images = readLocalImages();
-    const deletedImage = images.pop();
-    const latestImage = images.at(-1);
-
-    localStorage.setItem(localImagesKey, JSON.stringify(images));
-
-    if (latestImage) {
-      localStorage.setItem(localImageKey, JSON.stringify(latestImage));
-      showPreview(latestImage);
-    } else {
-      localStorage.removeItem(localImageKey);
-      clearPreview();
-    }
-
-    imageChannel?.postMessage({ type: "delete", id: deletedImage?.id || null });
-    setStatus("Ultima foto eliminata dalla modalità interna.");
-  } catch (error) {
-    console.error(error);
-    setStatus("Non sono riuscito a eliminare la foto.", true);
-  }
-}
-
-function clearPreview() {
-  preview.removeAttribute("src");
-  preview.hidden = true;
-  previewPlaceholder.hidden = false;
-  deletePhotoButton.disabled = true;
-  lastSaved.textContent = "Nessuna foto salvata.";
 }
 
 function getFrameSlot(index) {
@@ -414,6 +363,10 @@ function loadImageFromFile(file) {
 
     image.src = objectUrl;
   });
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function setStatus(message, isError = false) {

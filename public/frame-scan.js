@@ -14,6 +14,15 @@ function debugLog_func(msg) {
 const usesBrowserStorage = location.protocol === "file:" || location.hostname.endsWith("github.io");
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
+const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
+const frameSlots = [
+  { id: "001", label: "Cornice 001", position: { x: 0.25, y: 0.25 } },
+  { id: "002", label: "Cornice 002", position: { x: 0.75, y: 0.25 } },
+  { id: "003", label: "Cornice 003", position: { x: 0.25, y: 0.75 } },
+  { id: "004", label: "Cornice 004", position: { x: 0.75, y: 0.75 } },
+  { id: "005", label: "Cornice 005", position: { x: 0.5, y: 0.5 } },
+  { id: "006", label: "Cornice 006", position: { x: 0.5, y: 0.82 } }
+];
 
 const rawMarkerToFrame = {
   "755": "001",
@@ -94,7 +103,7 @@ async function loadImages() {
   }
 }
 
-function scanFrame() {
+async function scanFrame() {
   if (!stream) {
     setStatus("Attiva prima la camera.", true);
     return;
@@ -135,6 +144,7 @@ function scanFrame() {
   debugLog_func("✅ Found image for frame " + marker.frameId);
   showMatch(match, marker);
   setStatus(`Riconosciuta ${marker.label}: disegno trovato.`);
+  await moveMatchedImage(match, marker.frameId);
 }
 
 function findImageByFrame(frameId) {
@@ -160,6 +170,75 @@ function showMatch(image, marker) {
   matchedImage.hidden = false;
   matchPlaceholder.hidden = true;
   matchInfo.textContent = `${marker.label} contiene questo disegno.`;
+}
+
+async function moveMatchedImage(image, fromFrameId) {
+  try {
+    const movedImage = usesBrowserStorage
+      ? moveLocalImage(image.id, fromFrameId)
+      : await moveServerImage(image.id, fromFrameId);
+
+    if (movedImage?.frame) {
+      images = images.map((item) => (item.id === movedImage.id ? movedImage : item));
+      matchInfo.textContent = `Disegno trovato. Sulla parete si sta spostando verso ${movedImage.frame.label}.`;
+    }
+  } catch (error) {
+    console.error(error);
+    matchInfo.textContent = "Disegno trovato. Non sono riuscito a spostarlo sulla parete.";
+  }
+}
+
+async function moveServerImage(imageId, fromFrameId) {
+  const response = await fetch("api/reassign-frame", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageId, fromFrameId })
+  });
+
+  if (!response.ok) {
+    throw new Error("Move failed");
+  }
+
+  return response.json();
+}
+
+function moveLocalImage(imageId, fromFrameId) {
+  const localImages = readLocalImages();
+  const imageIndex = localImages.findIndex((image) => image.id === imageId);
+
+  if (imageIndex < 0) {
+    return null;
+  }
+
+  const destination = chooseDestinationFrame(localImages, fromFrameId);
+  const movedImage = {
+    ...localImages[imageIndex],
+    frame: {
+      ...destination,
+      confidence: 1,
+      detectedAt: new Date().toISOString()
+    },
+    movedAt: new Date().toISOString()
+  };
+
+  localImages[imageIndex] = movedImage;
+  localStorage.setItem(localImagesKey, JSON.stringify(localImages));
+  localStorage.setItem(localImageKey, JSON.stringify(movedImage));
+  imageChannel?.postMessage({ type: "move", image: movedImage });
+  return movedImage;
+}
+
+function chooseDestinationFrame(allImages, fromFrameId) {
+  const normalizedFromFrameId = normalizeFrameId(fromFrameId);
+  const occupiedFrameIds = new Set(
+    allImages
+      .map((image) => normalizeFrameId(image.frame?.id))
+      .filter((frameId) => frameId && frameId !== normalizedFromFrameId)
+  );
+  const occupiedCandidates = frameSlots.filter((frame) => occupiedFrameIds.has(frame.id));
+  const fallbackCandidates = frameSlots.filter((frame) => frame.id !== normalizedFromFrameId);
+  const candidates = occupiedCandidates.length > 0 ? occupiedCandidates : fallbackCandidates;
+  return candidates[Math.floor(Math.random() * candidates.length)] || frameSlots[0];
 }
 
 function clearMatch() {
