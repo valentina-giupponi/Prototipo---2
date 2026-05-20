@@ -13,12 +13,15 @@ fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 let images = loadImages();
 const clients = new Set();
 const frameSlots = [
-  { id: "001", label: "Cornice 001", position: { x: 0.25, y: 0.25 } },
-  { id: "002", label: "Cornice 002", position: { x: 0.75, y: 0.25 } },
-  { id: "003", label: "Cornice 003", position: { x: 0.25, y: 0.75 } },
-  { id: "004", label: "Cornice 004", position: { x: 0.75, y: 0.75 } },
-  { id: "005", label: "Cornice 005", position: { x: 0.5, y: 0.5 } },
-  { id: "006", label: "Cornice 006", position: { x: 0.5, y: 0.82 } }
+  { id: "001", label: "Cornice 001", position: { x: 0.18, y: 0.22 }, size: "small", role: "single" },
+  { id: "002", label: "Cornice 002", position: { x: 0.42, y: 0.18 }, size: "small", role: "single" },
+  { id: "003", label: "Cornice 003", position: { x: 0.68, y: 0.24 }, size: "small", role: "single" },
+  { id: "004", label: "Cornice 004", position: { x: 0.2, y: 0.68 }, size: "small", role: "single" },
+  { id: "005", label: "Cornice 005", position: { x: 0.48, y: 0.72 }, size: "small", role: "single" },
+  { id: "006", label: "Cornice 006", position: { x: 0.74, y: 0.66 }, size: "small", role: "single" },
+  { id: "101", label: "Cornice composizione 101", position: { x: 0.5, y: 0.34 }, size: "large", role: "composition" },
+  { id: "102", label: "Cornice composizione 102", position: { x: 0.32, y: 0.78 }, size: "large", role: "composition" },
+  { id: "103", label: "Cornice composizione 103", position: { x: 0.72, y: 0.78 }, size: "large", role: "composition" }
 ];
 
 const mimeTypes = {
@@ -190,20 +193,29 @@ async function handleReassignFrame(req, res) {
     return sendJson(res, { error: "Image not found" }, 404);
   }
 
-  const destination = chooseDestinationFrame(fromFrameId, imageId);
-  const image = {
-    ...images[imageIndex],
+  const partnerIndex = chooseRandomPartnerIndex(imageId);
+  const destination = chooseCompositionFrame();
+  const now = new Date().toISOString();
+  const targetIndexes = partnerIndex >= 0 ? [imageIndex, partnerIndex] : [imageIndex];
+  const movedImages = targetIndexes.map((index) => ({
+    ...images[index],
     frame: {
       ...destination,
       confidence: 1,
-      detectedAt: new Date().toISOString()
+      detectedAt: now
     },
-    movedAt: new Date().toISOString()
-  };
+    movedAt: now
+  }));
 
-  images[imageIndex] = image;
-  broadcastMove(image);
-  sendJson(res, image);
+  for (const movedImage of movedImages) {
+    const index = images.findIndex((image) => image.id === movedImage.id);
+    if (index >= 0) {
+      images[index] = movedImage;
+    }
+  }
+
+  broadcastMove(movedImages);
+  sendJson(res, { images: movedImages, frame: destination });
 }
 
 function handleDeleteLatest(res) {
@@ -244,8 +256,8 @@ function broadcast(image) {
   }
 }
 
-function broadcastMove(image) {
-  const event = `event: move\ndata: ${JSON.stringify(image)}\n\n`;
+function broadcastMove(imagesToMove) {
+  const event = `event: move\ndata: ${JSON.stringify({ images: imagesToMove })}\n\n`;
 
   for (const client of clients) {
     client.write(event);
@@ -260,21 +272,22 @@ function broadcastDelete(image) {
   }
 }
 
-function chooseDestinationFrame(fromFrameId, imageId) {
-  const occupiedFrameIds = new Set(
-    images
-      .filter((image) => image.id !== imageId)
-      .map((image) => normalizeFrameId(image.frame?.id))
-      .filter((frameId) => frameId && frameId !== fromFrameId)
-  );
-  const occupiedCandidates = frameSlots.filter((frame) => occupiedFrameIds.has(frame.id));
-  const fallbackCandidates = frameSlots.filter((frame) => frame.id !== fromFrameId);
-  const candidates = occupiedCandidates.length > 0 ? occupiedCandidates : fallbackCandidates;
-  return candidates[Math.floor(Math.random() * candidates.length)] || frameSlots[0];
+function chooseRandomPartnerIndex(imageId) {
+  const candidates = images
+    .map((image, index) => ({ image, index }))
+    .filter(({ image }) => image.id !== imageId);
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  return picked ? picked.index : -1;
+}
+
+function chooseCompositionFrame() {
+  const candidates = frameSlots.filter((frame) => frame.role === "composition");
+  return candidates[Math.floor(Math.random() * candidates.length)] || frameSlots.at(-1);
 }
 
 function getFrameSlot(index) {
-  const slot = frameSlots[index % frameSlots.length];
+  const singleFrames = frameSlots.filter((frame) => frame.role === "single");
+  const slot = singleFrames[index % singleFrames.length] || frameSlots[0];
   return {
     ...slot,
     confidence: 1,

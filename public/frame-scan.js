@@ -16,12 +16,15 @@ const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
 const frameSlots = [
-  { id: "001", label: "Cornice 001", position: { x: 0.25, y: 0.25 } },
-  { id: "002", label: "Cornice 002", position: { x: 0.75, y: 0.25 } },
-  { id: "003", label: "Cornice 003", position: { x: 0.25, y: 0.75 } },
-  { id: "004", label: "Cornice 004", position: { x: 0.75, y: 0.75 } },
-  { id: "005", label: "Cornice 005", position: { x: 0.5, y: 0.5 } },
-  { id: "006", label: "Cornice 006", position: { x: 0.5, y: 0.82 } }
+  { id: "001", label: "Cornice 001", position: { x: 0.18, y: 0.22 }, size: "small", role: "single" },
+  { id: "002", label: "Cornice 002", position: { x: 0.42, y: 0.18 }, size: "small", role: "single" },
+  { id: "003", label: "Cornice 003", position: { x: 0.68, y: 0.24 }, size: "small", role: "single" },
+  { id: "004", label: "Cornice 004", position: { x: 0.2, y: 0.68 }, size: "small", role: "single" },
+  { id: "005", label: "Cornice 005", position: { x: 0.48, y: 0.72 }, size: "small", role: "single" },
+  { id: "006", label: "Cornice 006", position: { x: 0.74, y: 0.66 }, size: "small", role: "single" },
+  { id: "101", label: "Cornice composizione 101", position: { x: 0.5, y: 0.34 }, size: "large", role: "composition" },
+  { id: "102", label: "Cornice composizione 102", position: { x: 0.32, y: 0.78 }, size: "large", role: "composition" },
+  { id: "103", label: "Cornice composizione 103", position: { x: 0.72, y: 0.78 }, size: "large", role: "composition" }
 ];
 
 const rawMarkerToFrame = {
@@ -174,13 +177,18 @@ function showMatch(image, marker) {
 
 async function moveMatchedImage(image, fromFrameId) {
   try {
-    const movedImage = usesBrowserStorage
-      ? moveLocalImage(image.id, fromFrameId)
+    const result = usesBrowserStorage
+      ? moveLocalComposition(image.id, fromFrameId)
       : await moveServerImage(image.id, fromFrameId);
+    const movedImages = Array.isArray(result?.images) ? result.images : result ? [result] : [];
 
-    if (movedImage?.frame) {
-      images = images.map((item) => (item.id === movedImage.id ? movedImage : item));
-      matchInfo.textContent = `Disegno trovato. Sulla parete si sta spostando verso ${movedImage.frame.label}.`;
+    if (movedImages.length > 0) {
+      const updateMap = new Map(movedImages.map((item) => [item.id, item]));
+      images = images.map((item) => updateMap.get(item.id) || item);
+      const destination = movedImages[0].frame;
+      matchInfo.textContent = movedImages.length > 1
+        ? `Disegno trovato. Sulla parete si sta componendo con un altro disegno in ${destination.label}.`
+        : `Disegno trovato. Sulla parete si sta spostando verso ${destination.label}.`;
     }
   } catch (error) {
     console.error(error);
@@ -202,43 +210,52 @@ async function moveServerImage(imageId, fromFrameId) {
   return response.json();
 }
 
-function moveLocalImage(imageId, fromFrameId) {
+function moveLocalComposition(imageId, fromFrameId) {
   const localImages = readLocalImages();
   const imageIndex = localImages.findIndex((image) => image.id === imageId);
 
   if (imageIndex < 0) {
-    return null;
+    return { images: [] };
   }
 
-  const destination = chooseDestinationFrame(localImages, fromFrameId);
-  const movedImage = {
-    ...localImages[imageIndex],
+  const partnerIndex = chooseRandomPartnerIndex(localImages, imageId);
+  const destination = chooseCompositionFrame();
+  const now = new Date().toISOString();
+  const targetIndexes = partnerIndex >= 0 ? [imageIndex, partnerIndex] : [imageIndex];
+  const movedImages = targetIndexes.map((index) => ({
+    ...localImages[index],
     frame: {
       ...destination,
       confidence: 1,
-      detectedAt: new Date().toISOString()
+      detectedAt: now
     },
-    movedAt: new Date().toISOString()
-  };
+    movedAt: now
+  }));
 
-  localImages[imageIndex] = movedImage;
+  for (const movedImage of movedImages) {
+    const index = localImages.findIndex((image) => image.id === movedImage.id);
+    if (index >= 0) {
+      localImages[index] = movedImage;
+    }
+  }
+
   localStorage.setItem(localImagesKey, JSON.stringify(localImages));
-  localStorage.setItem(localImageKey, JSON.stringify(movedImage));
-  imageChannel?.postMessage({ type: "move", image: movedImage });
-  return movedImage;
+  localStorage.setItem(localImageKey, JSON.stringify(movedImages[0]));
+  imageChannel?.postMessage({ type: "move", images: movedImages });
+  return { images: movedImages };
 }
 
-function chooseDestinationFrame(allImages, fromFrameId) {
-  const normalizedFromFrameId = normalizeFrameId(fromFrameId);
-  const occupiedFrameIds = new Set(
-    allImages
-      .map((image) => normalizeFrameId(image.frame?.id))
-      .filter((frameId) => frameId && frameId !== normalizedFromFrameId)
-  );
-  const occupiedCandidates = frameSlots.filter((frame) => occupiedFrameIds.has(frame.id));
-  const fallbackCandidates = frameSlots.filter((frame) => frame.id !== normalizedFromFrameId);
-  const candidates = occupiedCandidates.length > 0 ? occupiedCandidates : fallbackCandidates;
-  return candidates[Math.floor(Math.random() * candidates.length)] || frameSlots[0];
+function chooseRandomPartnerIndex(allImages, imageId) {
+  const candidates = allImages
+    .map((image, index) => ({ image, index }))
+    .filter(({ image }) => image.id !== imageId);
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  return picked ? picked.index : -1;
+}
+
+function chooseCompositionFrame() {
+  const candidates = frameSlots.filter((frame) => frame.role === "composition");
+  return candidates[Math.floor(Math.random() * candidates.length)] || frameSlots.at(-1);
 }
 
 function clearMatch() {

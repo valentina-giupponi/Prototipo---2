@@ -23,12 +23,12 @@ const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawin
 const maxScanSize = 1800;
 const analysisDelay = 1600;
 const frameSlots = [
-  { id: "001", label: "Cornice 001", position: { x: 0.25, y: 0.25 } },
-  { id: "002", label: "Cornice 002", position: { x: 0.75, y: 0.25 } },
-  { id: "003", label: "Cornice 003", position: { x: 0.25, y: 0.75 } },
-  { id: "004", label: "Cornice 004", position: { x: 0.75, y: 0.75 } },
-  { id: "005", label: "Cornice 005", position: { x: 0.5, y: 0.5 } },
-  { id: "006", label: "Cornice 006", position: { x: 0.5, y: 0.82 } }
+  { id: "001", label: "Cornice 001", position: { x: 0.18, y: 0.22 }, size: "small", role: "single" },
+  { id: "002", label: "Cornice 002", position: { x: 0.42, y: 0.18 }, size: "small", role: "single" },
+  { id: "003", label: "Cornice 003", position: { x: 0.68, y: 0.24 }, size: "small", role: "single" },
+  { id: "004", label: "Cornice 004", position: { x: 0.2, y: 0.68 }, size: "small", role: "single" },
+  { id: "005", label: "Cornice 005", position: { x: 0.48, y: 0.72 }, size: "small", role: "single" },
+  { id: "006", label: "Cornice 006", position: { x: 0.74, y: 0.66 }, size: "small", role: "single" }
 ];
 
 let stream = null;

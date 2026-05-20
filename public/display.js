@@ -8,12 +8,15 @@ const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
 const frameSlots = [
-  { id: "001", label: "Cornice 001" },
-  { id: "002", label: "Cornice 002" },
-  { id: "003", label: "Cornice 003" },
-  { id: "004", label: "Cornice 004" },
-  { id: "005", label: "Cornice 005" },
-  { id: "006", label: "Cornice 006" }
+  { id: "001", label: "Cornice 001", position: { x: 0.18, y: 0.22 }, size: "small", role: "single" },
+  { id: "002", label: "Cornice 002", position: { x: 0.42, y: 0.18 }, size: "small", role: "single" },
+  { id: "003", label: "Cornice 003", position: { x: 0.68, y: 0.24 }, size: "small", role: "single" },
+  { id: "004", label: "Cornice 004", position: { x: 0.2, y: 0.68 }, size: "small", role: "single" },
+  { id: "005", label: "Cornice 005", position: { x: 0.48, y: 0.72 }, size: "small", role: "single" },
+  { id: "006", label: "Cornice 006", position: { x: 0.74, y: 0.66 }, size: "small", role: "single" },
+  { id: "101", label: "Cornice composizione 101", position: { x: 0.5, y: 0.34 }, size: "large", role: "composition" },
+  { id: "102", label: "Cornice composizione 102", position: { x: 0.32, y: 0.78 }, size: "large", role: "composition" },
+  { id: "103", label: "Cornice composizione 103", position: { x: 0.72, y: 0.78 }, size: "large", role: "composition" }
 ];
 
 let images = [];
@@ -48,7 +51,7 @@ function connectToImageEvents() {
       }
 
       if (event.data?.type === "move") {
-        updateImage(event.data.image);
+        updateImages(event.data.images || event.data.image);
         return;
       }
 
@@ -84,7 +87,8 @@ function connectToImageEvents() {
   });
 
   events.addEventListener("move", (event) => {
-    updateImage(JSON.parse(event.data));
+    const payload = JSON.parse(event.data);
+    updateImages(payload.images || payload);
   });
 
   events.addEventListener("delete", (event) => {
@@ -106,13 +110,17 @@ function addImage(image) {
   renderImages();
 }
 
-function updateImage(image) {
-  if (!image?.id) {
+function updateImages(updatedImages) {
+  const updates = Array.isArray(updatedImages) ? updatedImages : [updatedImages];
+  const validUpdates = updates.filter((image) => image?.id);
+
+  if (validUpdates.length === 0) {
     return;
   }
 
-  images = images.map((item) => (item.id === image.id ? image : item));
-  renderImages(image.id);
+  const updateMap = new Map(validUpdates.map((image) => [image.id, image]));
+  images = images.map((item) => updateMap.get(item.id) || item);
+  renderImages(validUpdates[0].id);
 }
 
 function removeImage(id) {
@@ -128,6 +136,8 @@ function renderImages(activeImageId = null) {
     const frameImages = images.filter((image, index) => getDisplayFrameId(image, index) === frame.id);
     const figure = document.createElement("figure");
     figure.className = "wall-frame";
+    figure.classList.add(frame.size === "large" ? "is-large" : "is-small");
+    figure.classList.add(frame.role === "composition" ? "is-composition-frame" : "is-single-frame");
     figure.dataset.frame = frame.id;
 
     if (frameImages.some((image) => image.id === activeImageId)) {
@@ -149,12 +159,13 @@ function renderImages(activeImageId = null) {
         img.alt = "Disegno caricato";
         img.style.setProperty("--layer-index", index);
         img.style.setProperty("--layer-count", frameImages.length);
+        img.className = frame.role === "composition" ? "composition-image" : "single-image";
         artLayer.append(img);
       });
     }
 
     const caption = document.createElement("figcaption");
-    caption.textContent = frame.label + (frameImages.length > 1 ? " · composizione" : "");
+    caption.textContent = frame.label + (frame.role === "composition" && frameImages.length > 1 ? " · composizione" : "");
 
     figure.append(artLayer, caption);
     displayWall.append(figure);
