@@ -32,7 +32,7 @@ const frameSlots = [
 ];
 
 let stream = null;
-let pendingImageData = null;
+let pendingScan = null;
 
 startCameraButton.addEventListener("click", startCamera);
 takePhotoButton.addEventListener("click", takePhoto);
@@ -84,11 +84,9 @@ async function takePhoto() {
   }
 
   drawVisibleCameraToCanvas();
-  const imageData = scanModeCheckbox.checked
-    ? scanDrawingFromCanvas(canvas)
-    : canvas.toDataURL("image/png", 0.95);
+  const scan = createScanFromCanvas(canvas);
 
-  await prepareScanForConfirmation(imageData);
+  await prepareScanForConfirmation(scan);
 }
 
 async function uploadSelectedFile(event) {
@@ -98,8 +96,8 @@ async function uploadSelectedFile(event) {
   }
 
   try {
-    const imageData = await createImageDataFromFile(file);
-    await prepareScanForConfirmation(imageData);
+    const scan = await createImageDataFromFile(file);
+    await prepareScanForConfirmation(scan);
   } catch (error) {
     console.error(error);
     setStatus("Non sono riuscito a leggere l'immagine.", true);
@@ -108,26 +106,28 @@ async function uploadSelectedFile(event) {
   }
 }
 
-async function prepareScanForConfirmation(imageData) {
-  pendingImageData = imageData;
+async function prepareScanForConfirmation(scan) {
+  pendingScan = scan;
   showView(loadingView);
   await wait(analysisDelay);
-  confirmPreview.src = pendingImageData;
-  confirmStatus.textContent = "Controlla il disegno prima di salvarlo.";
-  confirmStatus.classList.remove("error");
+  confirmPreview.src = pendingScan.imageData;
+  confirmStatus.textContent = pendingScan.symbol === "unknown"
+    ? "Controlla il disegno. Non ho riconosciuto il simbolo della domanda."
+    : "Domanda riconosciuta: " + getSymbolLabel(pendingScan.symbol) + ". Controlla il disegno prima di salvarlo.";
+  confirmStatus.classList.toggle("error", pendingScan.symbol === "unknown");
   confirmScanButton.disabled = false;
   showView(confirmView);
 }
 
 function discardPendingScan() {
-  pendingImageData = null;
+  pendingScan = null;
   confirmPreview.removeAttribute("src");
   showView(captureView);
   setStatus("Scansione annullata. Puoi acquisire un nuovo disegno.");
 }
 
 async function confirmPendingScan() {
-  if (!pendingImageData) {
+  if (!pendingScan) {
     confirmStatus.textContent = "Nessuna scansione da confermare.";
     confirmStatus.classList.add("error");
     return;
@@ -138,8 +138,8 @@ async function confirmPendingScan() {
   confirmStatus.classList.remove("error");
 
   try {
-    const image = await saveImage(pendingImageData);
-    pendingImageData = null;
+    const image = await saveImage(pendingScan.imageData, pendingScan.symbol);
+    pendingScan = null;
     confirmPreview.removeAttribute("src");
     confirmScanButton.disabled = false;
     showView(wallNoticeView);
@@ -152,15 +152,15 @@ async function confirmPendingScan() {
   }
 }
 
-async function saveImage(imageData) {
+async function saveImage(imageData, symbol) {
   if (usesBrowserStorage) {
-    return saveLocalImage(imageData);
+    return saveLocalImage(imageData, symbol);
   }
 
   const response = await fetch("api/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: imageData })
+    body: JSON.stringify({ image: imageData, symbol })
   });
 
   if (!response.ok) {
@@ -170,12 +170,13 @@ async function saveImage(imageData) {
   return response.json();
 }
 
-function saveLocalImage(imageData) {
+function saveLocalImage(imageData, symbol) {
   const images = readLocalImages();
   const frame = getFrameSlot(images.length);
   const image = {
     id: String(Date.now()),
     dataUrl: imageData,
+    symbol,
     frame,
     createdAt: new Date().toISOString()
   };
@@ -230,10 +231,159 @@ async function createImageDataFromFile(file) {
   drawToCanvas(image, image.naturalWidth, image.naturalHeight);
 
   if (scanModeCheckbox.checked) {
-    return scanDrawingFromCanvas(canvas);
+    return createScanFromCanvas(canvas);
   }
 
-  return canvas.toDataURL("image/png", 0.95);
+  return createScanFromCanvas(canvas);
+}
+
+function createScanFromCanvas(sourceCanvas) {
+  const symbol = detectQuestionSymbol(sourceCanvas);
+  const drawingCanvas = cropDrawingCanvas(sourceCanvas);
+  const imageData = scanModeCheckbox.checked
+    ? scanDrawingFromCanvas(drawingCanvas)
+    : drawingCanvas.toDataURL("image/png", 0.95);
+
+  return { imageData, symbol };
+}
+
+function cropDrawingCanvas(sourceCanvas) {
+  const crop = {
+    x: Math.round(sourceCanvas.width * 0.06),
+    y: Math.round(sourceCanvas.height * 0.31),
+    width: Math.round(sourceCanvas.width * 0.88),
+    height: Math.round(sourceCanvas.height * 0.57)
+  };
+  const drawingCanvas = document.createElement("canvas");
+  const drawingContext = drawingCanvas.getContext("2d", { willReadFrequently: true });
+
+  drawingCanvas.width = crop.width;
+  drawingCanvas.height = crop.height;
+  drawingContext.drawImage(
+    sourceCanvas,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  return drawingCanvas;
+}
+
+function detectQuestionSymbol(sourceCanvas) {
+  const context = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  const width = sourceCanvas.width;
+  const height = sourceCanvas.height;
+  const headerHeight = Math.round(height * 0.34);
+  const image = context.getImageData(0, 0, width, headerHeight);
+  const components = findDarkComponents(image, width, headerHeight, 146)
+    .filter((component) => (
+      component.area > width * height * 0.0007 &&
+      component.width > width * 0.035 &&
+      component.height > height * 0.025
+    ));
+
+  const rightCandidate = getLargestComponent(components.filter((component) => component.centerX > width * 0.62));
+
+  if (rightCandidate) {
+    return "flower";
+  }
+
+  const leftCandidate = getLargestComponent(components.filter((component) => component.centerX < width * 0.24));
+
+  if (!leftCandidate) {
+    return "unknown";
+  }
+
+  return leftCandidate.centerY / height < 0.105 ? "heart" : "star";
+}
+
+function findDarkComponents(image, width, height, darkLimit) {
+  const data = image.data;
+  const visited = new Uint8Array(width * height);
+  const components = [];
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const startIndex = y * width + x;
+
+      if (visited[startIndex] || getPixelLuminance(data, startIndex) > darkLimit) {
+        continue;
+      }
+
+      const queue = [startIndex];
+      visited[startIndex] = 1;
+      let cursor = 0;
+      let minX = x;
+      let minY = y;
+      let maxX = x;
+      let maxY = y;
+      let area = 0;
+
+      while (cursor < queue.length) {
+        const current = queue[cursor++];
+        const currentX = current % width;
+        const currentY = Math.floor(current / width);
+        area += 1;
+        minX = Math.min(minX, currentX);
+        minY = Math.min(minY, currentY);
+        maxX = Math.max(maxX, currentX);
+        maxY = Math.max(maxY, currentY);
+
+        const neighbors = [
+          currentX > 0 ? current - 1 : -1,
+          currentX < width - 1 ? current + 1 : -1,
+          currentY > 0 ? current - width : -1,
+          currentY < height - 1 ? current + width : -1
+        ];
+
+        for (const neighbor of neighbors) {
+          if (neighbor >= 0 && !visited[neighbor] && getPixelLuminance(data, neighbor) <= darkLimit) {
+            visited[neighbor] = 1;
+            queue.push(neighbor);
+          }
+        }
+      }
+
+      components.push({
+        minX,
+        minY,
+        maxX,
+        maxY,
+        width: maxX - minX + 1,
+        height: maxY - minY + 1,
+        centerX: (minX + maxX) / 2,
+        centerY: (minY + maxY) / 2,
+        area
+      });
+    }
+  }
+
+  return components;
+}
+
+function getLargestComponent(components) {
+  return components.reduce((largest, component) => (
+    !largest || component.area > largest.area ? component : largest
+  ), null);
+}
+
+function getPixelLuminance(data, pixelIndex) {
+  const index = pixelIndex * 4;
+  return getLuminance(data[index], data[index + 1], data[index + 2]);
+}
+
+function getSymbolLabel(symbol) {
+  return {
+    heart: "cuore",
+    flower: "fiore",
+    star: "stella",
+    unknown: "simbolo non riconosciuto"
+  }[symbol] || "simbolo non riconosciuto";
 }
 
 function drawVisibleCameraToCanvas() {

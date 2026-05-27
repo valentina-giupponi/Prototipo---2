@@ -151,6 +151,7 @@ async function handleUpload(req, res) {
   const payload = JSON.parse(body || "{}");
   const dataUrl = payload.image;
   const frame = normalizeFrame(payload.frame) || getFrameSlot(images.length);
+  const symbol = normalizeSymbol(payload.symbol);
 
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
     return sendJson(res, { error: "Missing image data" }, 400);
@@ -173,6 +174,7 @@ async function handleUpload(req, res) {
     id,
     filename,
     url: `/uploads/${filename}`,
+    symbol,
     frame,
     createdAt: new Date().toISOString()
   };
@@ -273,9 +275,16 @@ function broadcastDelete(image) {
 }
 
 function chooseRandomPartnerIndex(imageId) {
+  const sourceImage = images.find((image) => image.id === imageId);
+  const sourceSymbol = sourceImage?.symbol;
+
+  if (!sourceSymbol || sourceSymbol === "unknown") {
+    return -1;
+  }
+
   const candidates = images
     .map((image, index) => ({ image, index }))
-    .filter(({ image }) => image.id !== imageId);
+    .filter(({ image }) => image.id !== imageId && image.symbol === sourceSymbol);
   const picked = candidates[Math.floor(Math.random() * candidates.length)];
   return picked ? picked.index : -1;
 }
@@ -297,6 +306,10 @@ function getFrameSlot(index) {
 
 function normalizeFrameId(frameId) {
   return String(frameId || "").padStart(3, "0");
+}
+
+function normalizeSymbol(symbol) {
+  return ["heart", "flower", "star"].includes(symbol) ? symbol : "unknown";
 }
 
 function normalizeFrame(frame) {
@@ -339,6 +352,7 @@ function loadImages() {
       id: path.parse(file).name,
       filename: file,
       url: `/uploads/${file}`,
+      symbol: "unknown",
       frame: getFrameSlot(index),
       createdAt: stat.mtime.toISOString()
     }));

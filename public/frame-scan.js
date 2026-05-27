@@ -187,8 +187,8 @@ async function moveMatchedImage(image, fromFrameId) {
       images = images.map((item) => updateMap.get(item.id) || item);
       const destination = movedImages[0].frame;
       matchInfo.textContent = movedImages.length > 1
-        ? `Disegno trovato. Sulla parete si sta componendo con un altro disegno in ${destination.label}.`
-        : `Disegno trovato. Sulla parete si sta spostando verso ${destination.label}.`;
+        ? `Disegno trovato. Sulla parete si sta componendo con un altro disegno della stessa domanda in ${destination.label}.`
+        : `Disegno trovato. Non ci sono ancora altri disegni con lo stesso simbolo: si sposta da solo verso ${destination.label}.`;
     }
   } catch (error) {
     console.error(error);
@@ -246,9 +246,16 @@ function moveLocalComposition(imageId, fromFrameId) {
 }
 
 function chooseRandomPartnerIndex(allImages, imageId) {
+  const sourceImage = allImages.find((image) => image.id === imageId);
+  const sourceSymbol = sourceImage?.symbol;
+
+  if (!sourceSymbol || sourceSymbol === "unknown") {
+    return -1;
+  }
+
   const candidates = allImages
     .map((image, index) => ({ image, index }))
-    .filter(({ image }) => image.id !== imageId);
+    .filter(({ image }) => image.id !== imageId && image.symbol === sourceSymbol);
   const picked = candidates[Math.floor(Math.random() * candidates.length)];
   return picked ? picked.index : -1;
 }
