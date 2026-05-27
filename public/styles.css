@@ -882,3 +882,37 @@ video {
     grid-template-columns: 1fr;
   }
 }
+
+
+.capture-page .camera-panel {
+  width: min(100%, 58dvh);
+  max-width: 100%;
+  aspect-ratio: 1 / 1.414;
+  min-height: 0;
+  height: auto;
+  align-self: center;
+}
+
+.capture-page .camera-panel::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+@media (max-width: 860px) {
+  .capture-page .camera-panel {
+    width: min(calc(100dvh - 310px), 100%);
+    min-width: min(100%, 260px);
+    max-height: 58dvh;
+  }
+}
+
+@media (max-width: 520px) {
+  .capture-page .camera-panel {
+    width: min(100%, 64dvh);
+    max-height: 54dvh;
+  }
+}

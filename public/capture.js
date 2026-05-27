@@ -51,8 +51,9 @@ async function startCamera() {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: "environment",
-        width: { ideal: 1600 },
-        height: { ideal: 1200 }
+        width: { ideal: 1200 },
+        height: { ideal: 1700 },
+        aspectRatio: { ideal: 0.707 }
       },
       audio: false
     });
@@ -280,26 +281,44 @@ function detectQuestionSymbol(sourceCanvas) {
   const height = sourceCanvas.height;
   const headerHeight = Math.round(height * 0.34);
   const image = context.getImageData(0, 0, width, headerHeight);
-  const components = findDarkComponents(image, width, headerHeight, 146)
+  const minSymbolArea = width * height * 0.0016;
+  const components = findDarkComponents(image, width, headerHeight, 154)
     .filter((component) => (
-      component.area > width * height * 0.0007 &&
-      component.width > width * 0.035 &&
-      component.height > height * 0.025
+      component.area > minSymbolArea &&
+      component.width > width * 0.045 &&
+      component.height > height * 0.035
     ));
 
-  const rightCandidate = getLargestComponent(components.filter((component) => component.centerX > width * 0.62));
+  const rightCandidate = getLargestComponent(components.filter((component) => (
+    component.centerX > width * 0.6 &&
+    component.centerY > height * 0.08 &&
+    component.centerY < height * 0.32
+  )));
 
-  if (rightCandidate) {
+  if (rightCandidate && rightCandidate.area > minSymbolArea * 1.3) {
     return "flower";
   }
 
-  const leftCandidate = getLargestComponent(components.filter((component) => component.centerX < width * 0.24));
+  const leftCandidate = getLargestComponent(components.filter((component) => (
+    component.centerX < width * 0.26 &&
+    component.centerY < height * 0.24
+  )));
 
   if (!leftCandidate) {
     return "unknown";
   }
 
-  return leftCandidate.centerY / height < 0.105 ? "heart" : "star";
+  const verticalPosition = leftCandidate.centerY / height;
+
+  if (verticalPosition < 0.115) {
+    return "heart";
+  }
+
+  if (verticalPosition < 0.19) {
+    return "star";
+  }
+
+  return "unknown";
 }
 
 function findDarkComponents(image, width, height, darkLimit) {
@@ -443,24 +462,24 @@ function scanDrawingFromCanvas(sourceCanvas) {
     histogram[luminance] += 1;
   }
 
-  const paperTone = getHistogramPercentile(histogram, 0.84);
-  const darkTone = getHistogramPercentile(histogram, 0.08);
+  const paperTone = getHistogramPercentile(histogram, 0.9);
+  const darkTone = getHistogramPercentile(histogram, 0.06);
   const otsuThreshold = getOtsuThreshold(histogram);
-  const threshold = clamp(Math.min(132, paperTone - 92, Math.max(darkTone + 34, otsuThreshold - 28)), 52, 132);
-  const hardCutoff = Math.min(138, threshold + 8);
-  const edgeSoftness = 24;
+  const threshold = clamp(Math.min(178, paperTone - 42, Math.max(darkTone + 62, otsuThreshold + 18)), 72, 178);
+  const hardCutoff = Math.min(186, threshold + 14);
+  const edgeSoftness = 50;
 
   for (let index = 0; index < data.length; index += 4) {
     const luminance = getLuminance(data[index], data[index + 1], data[index + 2]);
     const ink = luminance <= hardCutoff
-      ? clamp((threshold - luminance) / edgeSoftness, 0, 1)
+      ? clamp((threshold - luminance + 18) / edgeSoftness, 0, 1)
       : 0;
     const alpha = Math.round(smoothStep(ink) * 255);
 
     data[index] = 18;
     data[index + 1] = 22;
     data[index + 2] = 26;
-    data[index + 3] = alpha < 72 ? 0 : alpha;
+    data[index + 3] = alpha < 48 ? 0 : alpha;
   }
 
   context.putImageData(image, 0, 0);
