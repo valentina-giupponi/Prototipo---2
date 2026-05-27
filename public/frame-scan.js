@@ -182,6 +182,22 @@ async function moveMatchedImage(image, fromFrameId) {
       : await moveServerImage(image.id, fromFrameId);
     const movedImages = Array.isArray(result?.images) ? result.images : result ? [result] : [];
 
+    if (result?.locked) {
+      matchInfo.textContent = "Questo disegno è già dentro una composizione e resta bloccato lì.";
+      return;
+    }
+
+    if (result?.full) {
+      matchInfo.textContent = "Disegno trovato. Le cornici di composizione sono già complete.";
+      return;
+    }
+
+    if (result?.stale) {
+      matchInfo.textContent = "La parete è già cambiata: aggiorno le informazioni e non sposto questo disegno.";
+      await loadImages();
+      return;
+    }
+
     if (movedImages.length > 0) {
       const updateMap = new Map(movedImages.map((item) => [item.id, item]));
       images = images.map((item) => updateMap.get(item.id) || item);
@@ -218,10 +234,26 @@ function moveLocalComposition(imageId, fromFrameId) {
     return { images: [] };
   }
 
+  const currentFrameId = normalizeFrameId(localImages[imageIndex].frame?.id);
+  const requestedFrameId = normalizeFrameId(fromFrameId);
+
+  if (requestedFrameId && currentFrameId !== requestedFrameId) {
+    return { images: [], stale: true };
+  }
+
+  if (isCompositionImage(localImages[imageIndex])) {
+    return { images: [], locked: true };
+  }
+
   const partnerIndex = chooseRandomPartnerIndex(localImages, imageId);
-  const destination = chooseCompositionFrame();
-  const now = new Date().toISOString();
   const targetIndexes = partnerIndex >= 0 ? [imageIndex, partnerIndex] : [imageIndex];
+  const destination = chooseCompositionFrame(localImages, targetIndexes.length);
+
+  if (!destination) {
+    return { images: [], full: true };
+  }
+
+  const now = new Date().toISOString();
   const movedImages = targetIndexes.map((index) => ({
     ...localImages[index],
     frame: {
@@ -255,14 +287,28 @@ function chooseRandomPartnerIndex(allImages, imageId) {
 
   const candidates = allImages
     .map((image, index) => ({ image, index }))
-    .filter(({ image }) => image.id !== imageId && image.symbol === sourceSymbol);
+    .filter(({ image }) => image.id !== imageId && image.symbol === sourceSymbol && !isCompositionImage(image));
   const picked = candidates[Math.floor(Math.random() * candidates.length)];
   return picked ? picked.index : -1;
 }
 
-function chooseCompositionFrame() {
-  const candidates = frameSlots.filter((frame) => frame.role === "composition");
-  return candidates[Math.floor(Math.random() * candidates.length)] || frameSlots.at(-1);
+function chooseCompositionFrame(allImages, movingCount) {
+  const candidates = frameSlots.filter((frame) => (
+    frame.role === "composition" &&
+    countImagesInFrame(allImages, frame.id) + movingCount <= 2
+  ));
+  return candidates[Math.floor(Math.random() * candidates.length)] || null;
+}
+
+function countImagesInFrame(allImages, frameId) {
+  const normalizedFrameId = normalizeFrameId(frameId);
+  return allImages.filter((image) => normalizeFrameId(image.frame?.id) === normalizedFrameId).length;
+}
+
+function isCompositionImage(image) {
+  return image?.frame?.role === "composition" || frameSlots.some((frame) => (
+    frame.role === "composition" && normalizeFrameId(frame.id) === normalizeFrameId(image?.frame?.id)
+  ));
 }
 
 function clearMatch() {

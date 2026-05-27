@@ -195,10 +195,25 @@ async function handleReassignFrame(req, res) {
     return sendJson(res, { error: "Image not found" }, 404);
   }
 
+  const currentFrameId = normalizeFrameId(images[imageIndex].frame?.id);
+
+  if (fromFrameId && currentFrameId !== fromFrameId) {
+    return sendJson(res, { images: [], stale: true });
+  }
+
+  if (isCompositionImage(images[imageIndex])) {
+    return sendJson(res, { images: [], locked: true });
+  }
+
   const partnerIndex = chooseRandomPartnerIndex(imageId);
-  const destination = chooseCompositionFrame();
-  const now = new Date().toISOString();
   const targetIndexes = partnerIndex >= 0 ? [imageIndex, partnerIndex] : [imageIndex];
+  const destination = chooseCompositionFrame(targetIndexes.length);
+
+  if (!destination) {
+    return sendJson(res, { images: [], full: true });
+  }
+
+  const now = new Date().toISOString();
   const movedImages = targetIndexes.map((index) => ({
     ...images[index],
     frame: {
@@ -284,14 +299,28 @@ function chooseRandomPartnerIndex(imageId) {
 
   const candidates = images
     .map((image, index) => ({ image, index }))
-    .filter(({ image }) => image.id !== imageId && image.symbol === sourceSymbol);
+    .filter(({ image }) => image.id !== imageId && image.symbol === sourceSymbol && !isCompositionImage(image));
   const picked = candidates[Math.floor(Math.random() * candidates.length)];
   return picked ? picked.index : -1;
 }
 
-function chooseCompositionFrame() {
-  const candidates = frameSlots.filter((frame) => frame.role === "composition");
-  return candidates[Math.floor(Math.random() * candidates.length)] || frameSlots.at(-1);
+function chooseCompositionFrame(movingCount) {
+  const candidates = frameSlots.filter((frame) => (
+    frame.role === "composition" &&
+    countImagesInFrame(frame.id) + movingCount <= 2
+  ));
+  return candidates[Math.floor(Math.random() * candidates.length)] || null;
+}
+
+function countImagesInFrame(frameId) {
+  const normalizedFrameId = normalizeFrameId(frameId);
+  return images.filter((image) => normalizeFrameId(image.frame?.id) === normalizedFrameId).length;
+}
+
+function isCompositionImage(image) {
+  return image?.frame?.role === "composition" || frameSlots.some((frame) => (
+    frame.role === "composition" && normalizeFrameId(frame.id) === normalizeFrameId(image?.frame?.id)
+  ));
 }
 
 function getFrameSlot(index) {

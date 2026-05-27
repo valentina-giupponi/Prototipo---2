@@ -133,7 +133,9 @@ function renderImages(activeImageId = null) {
   emptyState.hidden = images.length > 0;
 
   for (const frame of frameSlots) {
-    const frameImages = images.filter((image, index) => getDisplayFrameId(image, index) === frame.id);
+    const frameImages = images
+      .filter((image, index) => getDisplayFrameId(image, index) === frame.id)
+      .slice(0, frame.role === "composition" ? 2 : 1);
     const figure = document.createElement("figure");
     figure.className = "wall-frame";
     figure.classList.add(frame.size === "large" ? "is-large" : "is-small");

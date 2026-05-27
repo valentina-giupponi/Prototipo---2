@@ -289,6 +289,24 @@ function detectQuestionSymbol(sourceCanvas) {
       component.height > height * 0.035
     ));
 
+  const leftCandidate = getLargestComponent(components.filter((component) => (
+    component.centerX < width * 0.32 &&
+    component.centerY > height * 0.025 &&
+    component.centerY < height * 0.24
+  )));
+
+  if (leftCandidate) {
+    const verticalPosition = leftCandidate.centerY / height;
+
+    if (verticalPosition < 0.115) {
+      return "heart";
+    }
+
+    if (verticalPosition >= 0.105 && verticalPosition < 0.2) {
+      return "star";
+    }
+  }
+
   const rightCandidate = getLargestComponent(components.filter((component) => (
     component.centerX > width * 0.6 &&
     component.centerY > height * 0.08 &&
@@ -297,25 +315,6 @@ function detectQuestionSymbol(sourceCanvas) {
 
   if (rightCandidate && rightCandidate.area > minSymbolArea * 1.3) {
     return "flower";
-  }
-
-  const leftCandidate = getLargestComponent(components.filter((component) => (
-    component.centerX < width * 0.26 &&
-    component.centerY < height * 0.24
-  )));
-
-  if (!leftCandidate) {
-    return "unknown";
-  }
-
-  const verticalPosition = leftCandidate.centerY / height;
-
-  if (verticalPosition < 0.115) {
-    return "heart";
-  }
-
-  if (verticalPosition < 0.19) {
-    return "star";
   }
 
   return "unknown";
