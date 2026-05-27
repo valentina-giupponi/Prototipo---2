@@ -885,9 +885,9 @@ video {
 
 
 .capture-page .camera-panel {
-  width: min(100%, 58dvh);
-  max-width: 100%;
-  aspect-ratio: 1 / 1.414;
+  flex: 0 0 auto;
+  width: min(calc(100vw - 48px), 460px);
+  aspect-ratio: 210 / 297;
   min-height: 0;
   height: auto;
   align-self: center;
@@ -896,23 +896,25 @@ video {
 .capture-page .camera-panel::after {
   content: "";
   position: absolute;
-  inset: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.72);
-  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.08);
+  inset: 0;
+  border: 3px solid rgba(255, 255, 255, 0.86);
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.1);
   pointer-events: none;
+}
+
+.capture-page .camera-message {
+  inset: 0;
+  z-index: 1;
 }
 
 @media (max-width: 860px) {
   .capture-page .camera-panel {
-    width: min(calc(100dvh - 310px), 100%);
-    min-width: min(100%, 260px);
-    max-height: 58dvh;
+    width: min(calc(100vw - 34px), 430px);
   }
 }
 
 @media (max-width: 520px) {
   .capture-page .camera-panel {
-    width: min(100%, 64dvh);
-    max-height: 54dvh;
+    width: min(calc(100vw - 34px), 380px);
   }
 }
