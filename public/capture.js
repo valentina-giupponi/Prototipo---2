@@ -294,6 +294,14 @@ function detectQuestionSymbol(sourceCanvas) {
   const width = sourceCanvas.width;
   const height = sourceCanvas.height;
   const headerHeight = Math.round(height * 0.34);
+  
+  // Prova prima il riconoscimento del colore
+  const colorDetected = detectSymbolColor(context, width, height, headerHeight);
+  if (colorDetected !== "unknown") {
+    return colorDetected;
+  }
+  
+  // Fallback al template matching per forma
   const image = context.getImageData(0, 0, width, headerHeight);
   const minSymbolArea = width * height * 0.0016;
   const components = findDarkComponents(image, width, headerHeight, 154)
@@ -417,6 +425,94 @@ function getSymbolLabel(symbol) {
     unknown: "simbolo non riconosciuto"
   }[symbol] || "simbolo non riconosciuto";
 }
+
+// Riconoscimento colore HSV per i simboli
+function getRGB_Hue(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  
+  if (delta === 0) return 0;
+  
+  let hue;
+  if (max === r) {
+    hue = ((g - b) / delta) % 6;
+  } else if (max === g) {
+    hue = (b - r) / delta + 2;
+  } else {
+    hue = (r - g) / delta + 4;
+  }
+  
+  hue = (hue * 60 + 360) % 360;
+  return hue;
+}
+
+function getCircularMean(hues) {
+  if (hues.length === 0) return 0;
+  
+  let sinSum = 0;
+  let cosSum = 0;
+  
+  for (const hue of hues) {
+    const radians = (hue * Math.PI) / 180;
+    sinSum += Math.sin(radians);
+    cosSum += Math.cos(radians);
+  }
+  
+  const meanRadians = Math.atan2(sinSum / hues.length, cosSum / hues.length);
+  const meanHue = (meanRadians * 180) / Math.PI;
+  return (meanHue + 360) % 360;
+}
+
+function detectSymbolColor(context, width, height, headerHeight) {
+  const imageData = context.getImageData(0, 0, width, headerHeight);
+  const data = imageData.data;
+  const hues = [];
+  
+  // Campiona i pixel della zona del simbolo (header)
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+    
+    // Salta pixel trasparenti o bianchi
+    if (a < 200) continue;
+    
+    const luminance = getLuminance(r, g, b);
+    if (luminance > 220) continue; // Salta pixel bianchi/chiari
+    
+    const hue = getRGB_Hue(r, g, b);
+    hues.push(hue);
+  }
+  
+  if (hues.length < 20) return "unknown"; // Non abbastanza pixel colorati
+  
+  const meanHue = getCircularMean(hues);
+  
+  // Determina il colore basato sulla media dell'Hue
+  // Rosso (Cuore): H: 0-20° or 340-360° (H:9°)
+  if (meanHue < 20 || meanHue > 340) {
+    return "heart";
+  }
+  
+  // Giallo (Stella): H: 40-60° (H:48°)
+  if (meanHue >= 40 && meanHue <= 60) {
+    return "star";
+  }
+  
+  // Blu (Fiore): H: 200-220° (H:211°)
+  if (meanHue >= 200 && meanHue <= 220) {
+    return "flower";
+  }
+  
+  return "unknown";
+}
+
 
 function drawVisibleCameraToCanvas() {
   const sourceWidth = camera.videoWidth;
