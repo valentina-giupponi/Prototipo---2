@@ -158,17 +158,31 @@ async function saveImage(imageData, symbol) {
     return saveLocalImage(imageData, symbol);
   }
 
-  const response = await fetch("api/upload", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: imageData, symbol })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondi timeout
 
-  if (!response.ok) {
-    throw new Error("Upload failed");
+  try {
+    const response = await fetch("api/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageData, symbol }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error("Upload failed: " + response.status);
+    }
+
+    return response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      throw new Error("Timeout: il server non ha risposto in tempo");
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 function saveLocalImage(imageData, symbol) {
