@@ -1,4 +1,5 @@
 const displayWall = document.querySelector("#displayWall");
+const transitLayer = document.querySelector("#transitLayer");
 const emptyState = document.querySelector("#emptyState");
 const connectionState = document.querySelector("#connectionState");
 const imageTime = document.querySelector("#imageTime");
@@ -21,6 +22,7 @@ const frameSlots = [
 
 let images = [];
 let previousCompositionImages = new Set(); // Traccia quali immagini sono in composizioni
+let previousImageFrames = new Map(); // Traccia dove erano le immagini prima
 
 loadImages();
 connectToImageEvents();
@@ -294,6 +296,20 @@ function renderImages(activeImageId = null) {
     const frameImages = images
       .filter((image, index) => getDisplayFrameId(image, index) === frame.id)
       .slice(0, frame.role === "composition" ? 2 : 1);
+    
+    // Controlla se ci sono immagini che si spostano a questa composizione
+    for (const image of frameImages) {
+      const previousFrame = previousImageFrames.get(image.id);
+      const isMovingToComposition = frame.role === "composition" && previousFrame && previousFrame !== frame.id;
+      
+      if (isMovingToComposition) {
+        console.log(`🚀 Image ${image.id} moving from frame ${previousFrame} to ${frame.id}`);
+        // Crea un elemento di transito
+        const imageSrc = image.dataUrl || image.url;
+        createTransitAnimation(imageSrc, image.symbol, previousFrame, frame.id);
+      }
+    }
+    
     const figure = document.createElement("figure");
     figure.className = "wall-frame";
     figure.classList.add(frame.size === "large" ? "is-large" : "is-small");
@@ -325,25 +341,6 @@ function renderImages(activeImageId = null) {
         const isComposition = frame.role === "composition";
         const imageSrc = image.dataUrl || image.url;
         
-        // Controlla se questa immagine è appena arrivata in una composizione
-        const compositionKey = `${frame.id}-${image.id}`;
-        const isNewInComposition = isComposition && !previousCompositionImages.has(compositionKey);
-        
-        if (isNewInComposition) {
-          console.log(`✨ New image in composition: ${image.id} → frame ${frame.id}`);
-          img.classList.add("transit-entering");
-          previousCompositionImages.add(compositionKey);
-          
-          // Calcola la posizione di partenza dall'ultima posizione singola
-          const lastSingleFrame = frameSlots.find(f => f.role === "single");
-          if (lastSingleFrame) {
-            const startOffset = calculateFrameOffset(lastSingleFrame, frame);
-            img.style.setProperty("--transit-start-x", `${startOffset.x}px`);
-            img.style.setProperty("--transit-start-y", `${startOffset.y}px`);
-            console.log(`🚀 Transit from ${lastSingleFrame.id} to ${frame.id}: (${startOffset.x}px, ${startOffset.y}px)`);
-          }
-        }
-        
         console.log(`📦 Frame: ${frame.id}, isComposition: ${isComposition}, symbol: ${image.symbol}`);
         
         if (isComposition && image.symbol) {
@@ -361,15 +358,6 @@ function renderImages(activeImageId = null) {
         
         artLayer.append(img);
       }
-      
-      // Pulisci le chiavi di composizioni che non esistono più
-      previousCompositionImages = new Set(
-        Array.from(previousCompositionImages).filter(key => {
-          const frameId = key.split("-")[0];
-          const imageId = key.split("-")[1];
-          return frameImages.some(img => img.id === imageId) && frameSlots.some(f => f.id === frameId);
-        })
-      );
     }
 
     const caption = document.createElement("figcaption");
@@ -377,6 +365,12 @@ function renderImages(activeImageId = null) {
 
     figure.append(artLayer, caption);
     displayWall.append(figure);
+  }
+
+  // Aggiorna la traccia delle posizioni precedenti
+  for (const image of images) {
+    const currentFrame = getDisplayFrameId(image, images.indexOf(image));
+    previousImageFrames.set(image.id, currentFrame);
   }
 
   const latestImage = images.at(-1);
@@ -440,4 +434,74 @@ function calculateFrameOffset(fromFrame, toFrame) {
   console.log(`📏 Frame offset: from (${fromRect.left}, ${fromRect.top}) to (${toRect.left}, ${toRect.top}) = (${offsetX}, ${offsetY})`);
   
   return { x: offsetX, y: offsetY };
+}
+
+function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
+  console.log(`🎬 Creating transit animation from ${fromFrameId} to ${toFrameId}`);
+  
+  // Carica l'immagine
+  const image = new Image();
+  image.crossOrigin = "anonymous";
+  
+  image.onload = () => {
+    // Trova le posizioni dei frame
+    const fromFrame = displayWall.querySelector(`[data-frame="${fromFrameId}"]`);
+    const toFrame = displayWall.querySelector(`[data-frame="${toFrameId}"]`);
+    
+    if (!fromFrame || !toFrame) {
+      console.warn(`⚠️ Could not find frames for transit`);
+      return;
+    }
+    
+    const fromRect = fromFrame.getBoundingClientRect();
+    const toRect = toFrame.getBoundingClientRect();
+    
+    console.log(`📍 Transit: from (${fromRect.left}, ${fromRect.top}) to (${toRect.left}, ${toRect.top})`);
+    
+    // Crea il canale con l'immagine colorizzata
+    colorizeImageForDisplay(imageSrc, symbol).then((colorizedSrc) => {
+      // Crea l'elemento di transito
+      const transitImg = document.createElement("img");
+      transitImg.src = colorizedSrc;
+      transitImg.className = "transit-item";
+      transitImg.style.width = `${Math.min(fromRect.width * 0.82, toRect.width * 0.42)}px`;
+      transitImg.style.height = `${Math.min(fromRect.height * 0.82, toRect.height * 0.82)}px`;
+      transitImg.style.objectFit = "contain";
+      
+      // Posiziona all'inizio (dalla cornice di partenza)
+      const startX = fromRect.left + fromRect.width / 2;
+      const startY = fromRect.top + fromRect.height / 2;
+      const endX = toRect.left + toRect.width / 2;
+      const endY = toRect.top + toRect.height / 2;
+      
+      transitImg.style.setProperty("--from-x", `${startX}px`);
+      transitImg.style.setProperty("--from-y", `${startY}px`);
+      transitImg.style.setProperty("--to-x", `${endX}px`);
+      transitImg.style.setProperty("--to-y", `${endY}px`);
+      
+      // Aggiusta per centering
+      transitImg.style.transform = `translate(calc(var(--from-x) - 50%), calc(var(--from-y) - 50%))`;
+      
+      transitLayer.append(transitImg);
+      
+      // Attiva l'animazione
+      requestAnimationFrame(() => {
+        transitImg.classList.add("animating");
+      });
+      
+      // Rimuovi l'elemento dopo l'animazione
+      transitImg.addEventListener("animationend", () => {
+        transitImg.remove();
+        console.log(`✅ Transit animation completed`);
+      }, { once: true });
+    }).catch(err => {
+      console.error("❌ Transit colorization failed:", err);
+    });
+  };
+  
+  image.onerror = () => {
+    console.error("❌ Transit image load failed");
+  };
+  
+  image.src = imageSrc;
 }
