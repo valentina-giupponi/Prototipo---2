@@ -20,6 +20,7 @@ const frameSlots = [
 ];
 
 let images = [];
+let previousCompositionImages = new Set(); // Traccia quali immagini sono in composizioni
 
 loadImages();
 connectToImageEvents();
@@ -54,28 +55,37 @@ function loadAndColorizeImage(imageSrc, symbol, callback) {
       ctx.drawImage(image, 0, 0);
       const imageData = ctx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
       const data = imageData.data;
-      const { r, g, b } = getSymbolColor(symbol);
       
-      console.log(`🎨 Applying color: RGB(${r},${g},${b})`);
+      // Campiona il colore del tratto (pixel scuri)
+      const strokeColor = sampleStrokeColor(data);
+      console.log(`📍 Sampled stroke color: RGB(${strokeColor.r},${strokeColor.g},${strokeColor.b})`);
       
-      // Cambia i pixel scuri (tratto) con il colore del simbolo
-      let darkPixels = 0;
+      const targetColor = getSymbolColor(symbol);
+      console.log(`🎨 Target color: RGB(${targetColor.r},${targetColor.g},${targetColor.b})`);
+      
+      // Sostituisci il colore del tratto con il colore desiderato
+      let recoloredPixels = 0;
+      const tolerance = 30; // Tolleranza per il matching del colore
+      
       for (let i = 0; i < data.length; i += 4) {
         const pixelR = data[i];
         const pixelG = data[i + 1];
         const pixelB = data[i + 2];
         
-        // Se il pixel è scuro (il tratto), sostituiscilo con il colore
-        const luminance = getLuminance(pixelR, pixelG, pixelB);
-        if (luminance < 100) {
-          data[i] = r;
-          data[i + 1] = g;
-          data[i + 2] = b;
-          darkPixels++;
+        // Verifica se il pixel è simile al colore del tratto (con tolleranza)
+        const rDiff = Math.abs(pixelR - strokeColor.r);
+        const gDiff = Math.abs(pixelG - strokeColor.g);
+        const bDiff = Math.abs(pixelB - strokeColor.b);
+        
+        if (rDiff < tolerance && gDiff < tolerance && bDiff < tolerance) {
+          data[i] = targetColor.r;
+          data[i + 1] = targetColor.g;
+          data[i + 2] = targetColor.b;
+          recoloredPixels++;
         }
       }
       
-      console.log(`🎨 Recolored ${darkPixels} pixels`);
+      console.log(`🎨 Recolored ${recoloredPixels} pixels`);
       ctx.putImageData(imageData, 0, 0);
       const result = colorCanvas.toDataURL("image/png");
       callback(result);
@@ -91,6 +101,41 @@ function loadAndColorizeImage(imageSrc, symbol, callback) {
   };
   
   image.src = imageSrc;
+}
+
+function sampleStrokeColor(imageData) {
+  // Campiona il colore più frequente tra i pixel scuri (tratto)
+  const colors = {};
+  let darkPixelCount = 0;
+  
+  for (let i = 0; i < imageData.length; i += 4) {
+    const r = imageData[i];
+    const g = imageData[i + 1];
+    const b = imageData[i + 2];
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    
+    // Considera pixel scuri
+    if (luminance < 150) {
+      darkPixelCount++;
+      const key = `${r},${g},${b}`;
+      colors[key] = (colors[key] || 0) + 1;
+    }
+  }
+  
+  // Trova il colore più frequente tra i pixel scuri
+  let mostFrequentColor = { r: 0, g: 0, b: 0 };
+  let maxCount = 0;
+  
+  for (const [colorKey, count] of Object.entries(colors)) {
+    if (count > maxCount) {
+      maxCount = count;
+      const [r, g, b] = colorKey.split(",").map(Number);
+      mostFrequentColor = { r, g, b };
+    }
+  }
+  
+  console.log(`📊 Found ${darkPixelCount} dark pixels, most frequent: RGB(${mostFrequentColor.r},${mostFrequentColor.g},${mostFrequentColor.b}) x${maxCount}`);
+  return mostFrequentColor;
 }
 
 function colorizeImageForDisplay(imageSrc, symbol) {
@@ -280,6 +325,16 @@ function renderImages(activeImageId = null) {
         const isComposition = frame.role === "composition";
         const imageSrc = image.dataUrl || image.url;
         
+        // Controlla se questa immagine è appena arrivata in una composizione
+        const compositionKey = `${frame.id}-${image.id}`;
+        const isNewInComposition = isComposition && !previousCompositionImages.has(compositionKey);
+        
+        if (isNewInComposition) {
+          console.log(`✨ New image in composition: ${image.id} → frame ${frame.id}`);
+          img.classList.add("transit-entering");
+          previousCompositionImages.add(compositionKey);
+        }
+        
         console.log(`📦 Frame: ${frame.id}, isComposition: ${isComposition}, symbol: ${image.symbol}, dataUrl: ${!!image.dataUrl}, url: ${!!image.url}`);
         
         if (isComposition && image.symbol) {
@@ -297,6 +352,15 @@ function renderImages(activeImageId = null) {
         
         artLayer.append(img);
       }
+      
+      // Pulisci le chiavi di composizioni che non esistono più
+      previousCompositionImages = new Set(
+        Array.from(previousCompositionImages).filter(key => {
+          const frameId = key.split("-")[0];
+          const imageId = key.split("-")[1];
+          return frameImages.some(img => img.id === imageId) && frameSlots.some(f => f.id === frameId);
+        })
+      );
     }
 
     const caption = document.createElement("figcaption");
