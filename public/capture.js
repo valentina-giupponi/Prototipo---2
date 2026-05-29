@@ -472,41 +472,52 @@ function detectSymbolColor(context, width, height, headerHeight) {
   const imageData = context.getImageData(0, 0, width, headerHeight);
   const data = imageData.data;
   const hues = [];
+  const saturations = [];
   
-  // Campiona i pixel della zona del simbolo (header)
+  // Campiona i pixel della zona del simbolo (header) con filtri più rigorosi
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
     const a = data[i + 3];
     
-    // Salta pixel trasparenti o bianchi
+    // Salta pixel trasparenti
     if (a < 200) continue;
     
     const luminance = getLuminance(r, g, b);
-    if (luminance > 220) continue; // Salta pixel bianchi/chiari
+    // Salta pixel troppo scuri (nero) e troppo chiari (bianco)
+    if (luminance < 40 || luminance > 240) continue;
     
     const hue = getRGB_Hue(r, g, b);
-    hues.push(hue);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const saturation = max === 0 ? 0 : (max - min) / max;
+    
+    // Filtra solo pixel sufficientemente saturi (almeno 40% saturazione)
+    if (saturation > 0.4) {
+      hues.push(hue);
+      saturations.push(saturation);
+    }
   }
   
-  if (hues.length < 20) return "unknown"; // Non abbastanza pixel colorati
+  if (hues.length < 15) return "unknown"; // Richiedi più pixel
   
   const meanHue = getCircularMean(hues);
+  const meanSaturation = saturations.reduce((a, b) => a + b, 0) / saturations.length;
   
-  // Determina il colore basato sulla media dell'Hue
-  // Rosso (Cuore): H: 0-20° or 340-360° (H:9°)
-  if (meanHue < 20 || meanHue > 340) {
+  // Determina il colore con range ampliati per essere più robusto
+  // Rosso (Cuore): H: 0-25° or 335-360° (H:9°)
+  if (meanHue < 25 || meanHue > 335) {
     return "heart";
   }
   
-  // Giallo (Stella): H: 40-60° (H:48°)
-  if (meanHue >= 40 && meanHue <= 60) {
+  // Giallo (Stella): H: 35-65° (H:48°) - ampliato per catturare variazioni
+  if (meanHue >= 35 && meanHue <= 65) {
     return "star";
   }
   
-  // Blu (Fiore): H: 200-220° (H:211°)
-  if (meanHue >= 200 && meanHue <= 220) {
+  // Blu (Fiore): H: 195-230° (H:211°) - ampliato
+  if (meanHue >= 195 && meanHue <= 230) {
     return "flower";
   }
   
@@ -684,6 +695,55 @@ function loadImageFromFile(file) {
 
 function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+// Colorazione delle immagini per composizioni
+function getSymbolColor(symbol) {
+  return {
+    heart: { r: 255, g: 46, b: 0 },      // #FF2E00 Rosso
+    flower: { r: 0, g: 103, b: 229 },    // #0067E5 Blu
+    star: { r: 255, g: 207, b: 0 }       // #FFCF00 Giallo
+  }[symbol] || { r: 18, g: 22, b: 26 };   // Nero di default
+}
+
+function colorizeImageDataUrl(dataUrl, symbol) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    
+    image.onload = () => {
+      const colorCanvas = document.createElement("canvas");
+      colorCanvas.width = image.width;
+      colorCanvas.height = image.height;
+      const ctx = colorCanvas.getContext("2d", { willReadFrequently: true });
+      
+      ctx.drawImage(image, 0, 0);
+      const imageData = ctx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
+      const data = imageData.data;
+      const { r, g, b } = getSymbolColor(symbol);
+      
+      // Cambia i pixel neri (tratto) con il colore del simbolo
+      for (let i = 0; i < data.length; i += 4) {
+        const pixelR = data[i];
+        const pixelG = data[i + 1];
+        const pixelB = data[i + 2];
+        const pixelA = data[i + 3];
+        
+        // Se il pixel è scuro (il tratto), sostituiscilo con il colore
+        const luminance = getLuminance(pixelR, pixelG, pixelB);
+        if (luminance < 100) {
+          data[i] = r;
+          data[i + 1] = g;
+          data[i + 2] = b;
+        }
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+      resolve(colorCanvas.toDataURL("image/png"));
+    };
+    
+    image.onerror = () => resolve(dataUrl);
+    image.src = dataUrl;
+  });
 }
 
 function setStatus(message, isError = false) {

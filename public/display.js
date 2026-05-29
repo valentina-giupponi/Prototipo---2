@@ -24,6 +24,63 @@ let images = [];
 loadImages();
 connectToImageEvents();
 
+// Funzione per colorare le immagini nelle composizioni
+function getSymbolColor(symbol) {
+  return {
+    heart: { r: 255, g: 46, b: 0 },      // #FF2E00 Rosso
+    flower: { r: 0, g: 103, b: 229 },    // #0067E5 Blu
+    star: { r: 255, g: 207, b: 0 }       // #FFCF00 Giallo
+  }[symbol] || { r: 18, g: 22, b: 26 };   // Nero di default
+}
+
+function getLuminance(r, g, b) {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function colorizeImageForDisplay(imageSrc, symbol) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    
+    image.onload = () => {
+      try {
+        const colorCanvas = document.createElement("canvas");
+        colorCanvas.width = image.width;
+        colorCanvas.height = image.height;
+        const ctx = colorCanvas.getContext("2d");
+        
+        ctx.drawImage(image, 0, 0);
+        const imageData = ctx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
+        const data = imageData.data;
+        const { r, g, b } = getSymbolColor(symbol);
+        
+        // Cambia i pixel scuri (tratto) con il colore del simbolo
+        for (let i = 0; i < data.length; i += 4) {
+          const pixelR = data[i];
+          const pixelG = data[i + 1];
+          const pixelB = data[i + 2];
+          
+          // Se il pixel è scuro (il tratto), sostituiscilo con il colore
+          const luminance = getLuminance(pixelR, pixelG, pixelB);
+          if (luminance < 100) {
+            data[i] = r;
+            data[i + 1] = g;
+            data[i + 2] = b;
+          }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        resolve(colorCanvas.toDataURL("image/png"));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    image.onerror = () => reject(new Error("Failed to load image"));
+    image.src = imageSrc;
+  });
+}
+
 async function loadImages() {
   if (usesBrowserStorage) {
     images = readLocalImages();
@@ -157,7 +214,20 @@ function renderImages(activeImageId = null) {
     } else {
       frameImages.forEach((image, index) => {
         const img = document.createElement("img");
-        img.src = image.dataUrl || image.url;
+        // Se è una composizione, colora l'immagine basata sul symbol
+        const isComposition = frame.role === "composition";
+        const imageSrc = image.dataUrl || image.url;
+        
+        if (isComposition && image.symbol && typeof colorizeImageForDisplay === "function") {
+          colorizeImageForDisplay(imageSrc, image.symbol).then((colorizedSrc) => {
+            img.src = colorizedSrc;
+          }).catch(() => {
+            img.src = imageSrc; // Fallback se la colorazione fallisce
+          });
+        } else {
+          img.src = imageSrc;
+        }
+        
         img.alt = "Disegno caricato";
         img.style.setProperty("--layer-index", index);
         img.style.setProperty("--layer-count", frameImages.length);
