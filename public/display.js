@@ -333,9 +333,18 @@ function renderImages(activeImageId = null) {
           console.log(`✨ New image in composition: ${image.id} → frame ${frame.id}`);
           img.classList.add("transit-entering");
           previousCompositionImages.add(compositionKey);
+          
+          // Calcola la posizione di partenza dall'ultima posizione singola
+          const lastSingleFrame = frameSlots.find(f => f.role === "single");
+          if (lastSingleFrame) {
+            const startOffset = calculateFrameOffset(lastSingleFrame, frame);
+            img.style.setProperty("--transit-start-x", `${startOffset.x}px`);
+            img.style.setProperty("--transit-start-y", `${startOffset.y}px`);
+            console.log(`🚀 Transit from ${lastSingleFrame.id} to ${frame.id}: (${startOffset.x}px, ${startOffset.y}px)`);
+          }
         }
         
-        console.log(`📦 Frame: ${frame.id}, isComposition: ${isComposition}, symbol: ${image.symbol}, dataUrl: ${!!image.dataUrl}, url: ${!!image.url}`);
+        console.log(`📦 Frame: ${frame.id}, isComposition: ${isComposition}, symbol: ${image.symbol}`);
         
         if (isComposition && image.symbol) {
           console.log(`🎨 Will colorize: symbol=${image.symbol}`);
@@ -406,4 +415,29 @@ function readLocalImages() {
     console.error(error);
     return [];
   }
+}
+
+function calculateFrameOffset(fromFrame, toFrame) {
+  // Trova gli elementi DOM dei frame
+  const fromElement = displayWall.querySelector(`[data-frame="${fromFrame.id}"]`);
+  const toElement = displayWall.querySelector(`[data-frame="${toFrame.id}"]`);
+  
+  if (!fromElement || !toElement) {
+    console.warn(`⚠️ Could not find frames: from=${fromFrame.id}, to=${toFrame.id}`);
+    return { x: 0, y: 0 };
+  }
+  
+  // Ottieni le posizioni relative al viewport
+  const fromRect = fromElement.getBoundingClientRect();
+  const toRect = toElement.getBoundingClientRect();
+  
+  // Calcola l'offset (da dove deve partire per arrivare a destinazione)
+  // Se positivo, significa che deve muoversi a sinistra/su
+  // Se negativo, significa che deve muoversi a destra/giù
+  const offsetX = fromRect.left - toRect.left;
+  const offsetY = fromRect.top - toRect.top;
+  
+  console.log(`📏 Frame offset: from (${fromRect.left}, ${fromRect.top}) to (${toRect.left}, ${toRect.top}) = (${offsetX}, ${offsetY})`);
+  
+  return { x: offsetX, y: offsetY };
 }
