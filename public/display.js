@@ -291,6 +291,9 @@ function removeImage(id) {
 function renderImages(activeImageId = null) {
   displayWall.replaceChildren();
   emptyState.hidden = images.length > 0;
+  
+  // Mappa per tracciare quali immagini sono in transito
+  const transitingImages = new Set();
 
   for (const frame of frameSlots) {
     const frameImages = images
@@ -304,6 +307,7 @@ function renderImages(activeImageId = null) {
       
       if (isMovingToComposition) {
         console.log(`🚀 Image ${image.id} moving from frame ${previousFrame} to ${frame.id}`);
+        transitingImages.add(image.id);
         // Crea un elemento di transito
         const imageSrc = image.dataUrl || image.url;
         createTransitAnimation(imageSrc, image.symbol, previousFrame, frame.id);
@@ -336,6 +340,13 @@ function renderImages(activeImageId = null) {
         img.style.setProperty("--layer-index", index);
         img.style.setProperty("--layer-count", frameImages.length);
         img.className = frame.role === "composition" ? "composition-image" : "single-image";
+        
+        // Se è un'immagine in transito, nascondi temporaneamente
+        if (transitingImages.has(image.id)) {
+          img.style.visibility = "hidden";
+          img.dataset.transiting = "true";
+          console.log(`👁️ Hiding image ${image.id} during transit`);
+        }
         
         // Se è una composizione, colora dinamicamente l'immagine
         const isComposition = frame.role === "composition";
@@ -489,10 +500,19 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
         transitImg.classList.add("animating");
       });
       
-      // Rimuovi l'elemento dopo l'animazione
+      // Quando finisce l'animazione, mostra l'immagine nella composizione
       transitImg.addEventListener("animationend", () => {
+        console.log(`✅ Transit animation completed, showing final image`);
+        
+        // Trova e mostra l'immagine nella composizione
+        const finalImg = toFrame.querySelector(`img[data-transiting="true"]`);
+        if (finalImg) {
+          finalImg.style.visibility = "visible";
+          finalImg.removeAttribute("data-transiting");
+          console.log(`👁️ Showing final image in composition`);
+        }
+        
         transitImg.remove();
-        console.log(`✅ Transit animation completed`);
       }, { once: true });
     }).catch(err => {
       console.error("❌ Transit colorization failed:", err);
