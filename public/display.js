@@ -37,6 +37,62 @@ function getLuminance(r, g, b) {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
+function loadAndColorizeImage(imageSrc, symbol, callback) {
+  console.log(`🎨 Colorizing image: symbol=${symbol}, src=${imageSrc}`);
+  
+  const image = new Image();
+  image.crossOrigin = "anonymous";
+  
+  image.onload = () => {
+    try {
+      console.log(`✅ Image loaded: ${imageSrc}`);
+      const colorCanvas = document.createElement("canvas");
+      colorCanvas.width = image.width;
+      colorCanvas.height = image.height;
+      const ctx = colorCanvas.getContext("2d");
+      
+      ctx.drawImage(image, 0, 0);
+      const imageData = ctx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
+      const data = imageData.data;
+      const { r, g, b } = getSymbolColor(symbol);
+      
+      console.log(`🎨 Applying color: RGB(${r},${g},${b})`);
+      
+      // Cambia i pixel scuri (tratto) con il colore del simbolo
+      let darkPixels = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const pixelR = data[i];
+        const pixelG = data[i + 1];
+        const pixelB = data[i + 2];
+        
+        // Se il pixel è scuro (il tratto), sostituiscilo con il colore
+        const luminance = getLuminance(pixelR, pixelG, pixelB);
+        if (luminance < 100) {
+          data[i] = r;
+          data[i + 1] = g;
+          data[i + 2] = b;
+          darkPixels++;
+        }
+      }
+      
+      console.log(`🎨 Recolored ${darkPixels} pixels`);
+      ctx.putImageData(imageData, 0, 0);
+      const result = colorCanvas.toDataURL("image/png");
+      callback(result);
+    } catch (error) {
+      console.error("❌ Colorization failed:", error);
+      callback(imageSrc); // Fallback
+    }
+  };
+  
+  image.onerror = () => {
+    console.error("❌ Image load failed:", imageSrc);
+    callback(imageSrc); // Fallback
+  };
+  
+  image.src = imageSrc;
+}
+
 function colorizeImageForDisplay(imageSrc, symbol) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -212,28 +268,35 @@ function renderImages(activeImageId = null) {
       placeholder.className = "wall-frame-placeholder";
       artLayer.append(placeholder);
     } else {
-      frameImages.forEach((image, index) => {
+      for (let index = 0; index < frameImages.length; index++) {
+        const image = frameImages[index];
         const img = document.createElement("img");
-        // Se è una composizione, colora l'immagine basata sul symbol
-        const isComposition = frame.role === "composition";
-        const imageSrc = image.dataUrl || image.url;
-        
-        if (isComposition && image.symbol && typeof colorizeImageForDisplay === "function") {
-          colorizeImageForDisplay(imageSrc, image.symbol).then((colorizedSrc) => {
-            img.src = colorizedSrc;
-          }).catch(() => {
-            img.src = imageSrc; // Fallback se la colorazione fallisce
-          });
-        } else {
-          img.src = imageSrc;
-        }
-        
         img.alt = "Disegno caricato";
         img.style.setProperty("--layer-index", index);
         img.style.setProperty("--layer-count", frameImages.length);
         img.className = frame.role === "composition" ? "composition-image" : "single-image";
+        
+        // Se è una composizione, colora dinamicamente l'immagine
+        const isComposition = frame.role === "composition";
+        const imageSrc = image.dataUrl || image.url;
+        
+        console.log(`📦 Frame: ${frame.id}, isComposition: ${isComposition}, symbol: ${image.symbol}, dataUrl: ${!!image.dataUrl}, url: ${!!image.url}`);
+        
+        if (isComposition && image.symbol) {
+          console.log(`🎨 Will colorize: symbol=${image.symbol}`);
+          // Carica e colora l'immagine
+          loadAndColorizeImage(imageSrc, image.symbol, (colorizedSrc) => {
+            img.src = colorizedSrc;
+          });
+        } else {
+          if (isComposition && !image.symbol) {
+            console.warn(`⚠️ Composition frame but no symbol for image ${image.id}`);
+          }
+          img.src = imageSrc;
+        }
+        
         artLayer.append(img);
-      });
+      }
     }
 
     const caption = document.createElement("figcaption");
