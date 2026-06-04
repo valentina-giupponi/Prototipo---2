@@ -473,56 +473,45 @@ function detectSymbolColor(context, width, height, headerHeight) {
   const imageData = context.getImageData(0, 0, width, headerHeight);
   const data = imageData.data;
   const hues = [];
-  const saturations = [];
-  
-  // Campiona i pixel della zona del simbolo (header) con filtri più rigorosi
+
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
     const a = data[i + 3];
-    
-    // Salta pixel trasparenti
+
     if (a < 200) continue;
-    
+
     const luminance = getLuminance(r, g, b);
-    // Salta pixel troppo scuri (nero) e troppo chiari (bianco)
-    if (luminance < 40 || luminance > 240) continue;
-    
-    const hue = getRGB_Hue(r, g, b);
+    if (luminance < 35 || luminance > 245) continue;
+
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const saturation = max === 0 ? 0 : (max - min) / max;
-    
-    // Filtra solo pixel sufficientemente saturi (almeno 40% saturazione)
-    if (saturation > 0.4) {
-      hues.push(hue);
-      saturations.push(saturation);
+
+    if (saturation > 0.25) {
+      hues.push(getRGB_Hue(r, g, b));
     }
   }
-  
-  if (hues.length < 15) return "unknown"; // Richiedi più pixel
-  
+
+  if (hues.length < 8) return "unknown";
+
   const meanHue = getCircularMean(hues);
-  const meanSaturation = saturations.reduce((a, b) => a + b, 0) / saturations.length;
-  
-  // Determina il colore con range ampliati per essere più robusto
-  // Rosso (Cuore): H: 0-25° or 335-360° (H:9°)
-  if (meanHue < 25 || meanHue > 335) {
-    return "heart";
-  }
-  
-  // Giallo (Stella): H: 35-65° (H:48°) - ampliato per catturare variazioni
-  if (meanHue >= 35 && meanHue <= 65) {
-    return "star";
-  }
-  
-  // Blu (Fiore): H: 195-230° (H:211°) - ampliato
-  if (meanHue >= 195 && meanHue <= 230) {
-    return "flower";
-  }
-  
-  return "unknown";
+
+  // Usa la distanza circolare ai colori canonici: nessun gap = nessuna zona "sconosciuta"
+  // Rosso=cuore (H≈5°), Giallo=stella (H≈50°), Blu=fiore (H≈211°)
+  const redDist = circularHueDist(meanHue, 5);
+  const yellowDist = circularHueDist(meanHue, 50);
+  const blueDist = circularHueDist(meanHue, 211);
+
+  if (redDist <= yellowDist && redDist <= blueDist) return "heart";
+  if (yellowDist <= redDist && yellowDist <= blueDist) return "star";
+  return "flower";
+}
+
+function circularHueDist(a, b) {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
 }
 
 
