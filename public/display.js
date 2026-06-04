@@ -38,7 +38,7 @@ function loadSavedPaths() {
   try {
     // RESET: Decommentare la riga qui sotto per resettare tutti i percorsi
     // localStorage.removeItem('recordedPaths');
-    
+
     const stored = localStorage.getItem('recordedPaths');
     if (stored) {
       const paths = JSON.parse(stored);
@@ -101,10 +101,10 @@ function getLuminance(r, g, b) {
 
 function loadAndColorizeImage(imageSrc, symbol, callback) {
   console.log(`🎨 Colorizing image: symbol=${symbol}, src=${imageSrc}`);
-  
+
   const image = new Image();
   image.crossOrigin = "anonymous";
-  
+
   image.onload = () => {
     try {
       console.log(`✅ Image loaded: ${imageSrc}`);
@@ -112,32 +112,32 @@ function loadAndColorizeImage(imageSrc, symbol, callback) {
       colorCanvas.width = image.width;
       colorCanvas.height = image.height;
       const ctx = colorCanvas.getContext("2d");
-      
+
       ctx.drawImage(image, 0, 0);
       const imageData = ctx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
       const data = imageData.data;
-      
+
       // Campiona il colore del tratto (pixel scuri)
       const strokeColor = sampleStrokeColor(data);
       console.log(`📍 Sampled stroke color: RGB(${strokeColor.r},${strokeColor.g},${strokeColor.b})`);
-      
+
       const targetColor = getSymbolColor(symbol);
       console.log(`🎨 Target color: RGB(${targetColor.r},${targetColor.g},${targetColor.b})`);
-      
+
       // Sostituisci il colore del tratto con il colore desiderato
       let recoloredPixels = 0;
       const tolerance = 30; // Tolleranza per il matching del colore
-      
+
       for (let i = 0; i < data.length; i += 4) {
         const pixelR = data[i];
         const pixelG = data[i + 1];
         const pixelB = data[i + 2];
-        
+
         // Verifica se il pixel è simile al colore del tratto (con tolleranza)
         const rDiff = Math.abs(pixelR - strokeColor.r);
         const gDiff = Math.abs(pixelG - strokeColor.g);
         const bDiff = Math.abs(pixelB - strokeColor.b);
-        
+
         if (rDiff < tolerance && gDiff < tolerance && bDiff < tolerance) {
           data[i] = targetColor.r;
           data[i + 1] = targetColor.g;
@@ -145,7 +145,7 @@ function loadAndColorizeImage(imageSrc, symbol, callback) {
           recoloredPixels++;
         }
       }
-      
+
       console.log(`🎨 Recolored ${recoloredPixels} pixels`);
       ctx.putImageData(imageData, 0, 0);
       const result = colorCanvas.toDataURL("image/png");
@@ -155,12 +155,12 @@ function loadAndColorizeImage(imageSrc, symbol, callback) {
       callback(imageSrc); // Fallback
     }
   };
-  
+
   image.onerror = () => {
     console.error("❌ Image load failed:", imageSrc);
     callback(imageSrc); // Fallback
   };
-  
+
   image.src = imageSrc;
 }
 
@@ -168,13 +168,13 @@ function sampleStrokeColor(imageData) {
   // Campiona il colore più frequente tra i pixel scuri (tratto)
   const colors = {};
   let darkPixelCount = 0;
-  
+
   for (let i = 0; i < imageData.length; i += 4) {
     const r = imageData[i];
     const g = imageData[i + 1];
     const b = imageData[i + 2];
     const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-    
+
     // Considera pixel scuri
     if (luminance < 150) {
       darkPixelCount++;
@@ -182,11 +182,11 @@ function sampleStrokeColor(imageData) {
       colors[key] = (colors[key] || 0) + 1;
     }
   }
-  
+
   // Trova il colore più frequente tra i pixel scuri
   let mostFrequentColor = { r: 0, g: 0, b: 0 };
   let maxCount = 0;
-  
+
   for (const [colorKey, count] of Object.entries(colors)) {
     if (count > maxCount) {
       maxCount = count;
@@ -194,7 +194,7 @@ function sampleStrokeColor(imageData) {
       mostFrequentColor = { r, g, b };
     }
   }
-  
+
   console.log(`📊 Found ${darkPixelCount} dark pixels, most frequent: RGB(${mostFrequentColor.r},${mostFrequentColor.g},${mostFrequentColor.b}) x${maxCount}`);
   return mostFrequentColor;
 }
@@ -203,25 +203,25 @@ function colorizeImageForDisplay(imageSrc, symbol) {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
-    
+
     image.onload = () => {
       try {
         const colorCanvas = document.createElement("canvas");
         colorCanvas.width = image.width;
         colorCanvas.height = image.height;
         const ctx = colorCanvas.getContext("2d");
-        
+
         ctx.drawImage(image, 0, 0);
         const imageData = ctx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
         const data = imageData.data;
         const { r, g, b } = getSymbolColor(symbol);
-        
+
         // Cambia i pixel scuri (tratto) con il colore del simbolo
         for (let i = 0; i < data.length; i += 4) {
           const pixelR = data[i];
           const pixelG = data[i + 1];
           const pixelB = data[i + 2];
-          
+
           // Se il pixel è scuro (il tratto), sostituiscilo con il colore
           const luminance = getLuminance(pixelR, pixelG, pixelB);
           if (luminance < 100) {
@@ -230,14 +230,14 @@ function colorizeImageForDisplay(imageSrc, symbol) {
             data[i + 2] = b;
           }
         }
-        
+
         ctx.putImageData(imageData, 0, 0);
         resolve(colorCanvas.toDataURL("image/png"));
       } catch (error) {
         reject(error);
       }
     };
-    
+
     image.onerror = () => reject(new Error("Failed to load image"));
     image.src = imageSrc;
   });
@@ -350,7 +350,7 @@ function removeImage(id) {
 function renderImages(activeImageId = null) {
   displayWall.replaceChildren();
   emptyState.hidden = images.length > 0;
-  
+
   // Mappa per tracciare quali immagini sono in transito
   const transitingImages = new Set();
 
@@ -358,12 +358,12 @@ function renderImages(activeImageId = null) {
     const frameImages = images
       .filter((image, index) => getDisplayFrameId(image, index) === frame.id)
       .slice(0, frame.role === "composition" ? 2 : 1);
-    
+
     // Controlla se ci sono immagini che si spostano a questa composizione
     for (const image of frameImages) {
       const previousFrame = previousImageFrames.get(image.id);
       const isMovingToComposition = frame.role === "composition" && previousFrame && previousFrame !== frame.id;
-      
+
       if (isMovingToComposition) {
         console.log(`🚀 Image ${image.id} moving from frame ${previousFrame} to ${frame.id}`);
         transitingImages.add(image.id);
@@ -372,7 +372,7 @@ function renderImages(activeImageId = null) {
         createTransitAnimation(imageSrc, image.symbol, previousFrame, frame.id);
       }
     }
-    
+
     const figure = document.createElement("figure");
     figure.className = "wall-frame";
     figure.classList.add(frame.size === "large" ? "is-large" : "is-small");
@@ -394,25 +394,30 @@ function renderImages(activeImageId = null) {
     } else {
       for (let index = 0; index < frameImages.length; index++) {
         const image = frameImages[index];
+        const motionWrap = document.createElement("div");
+        motionWrap.className = "drawing-motion";
+        motionWrap.style.setProperty("--layer-index", index);
+        motionWrap.style.setProperty("--layer-count", frameImages.length);
+        motionWrap.style.setProperty("--motion-delay", getDrawingMotionDelay(image.id, index));
+        motionWrap.style.setProperty("--motion-duration", getDrawingMotionDuration(image.id));
+
         const img = document.createElement("img");
         img.alt = "Disegno caricato";
-        img.style.setProperty("--layer-index", index);
-        img.style.setProperty("--layer-count", frameImages.length);
         img.className = frame.role === "composition" ? "composition-image" : "single-image";
-        
+
         // Se è un'immagine in transito, nascondi temporaneamente
         if (transitingImages.has(image.id)) {
           img.style.visibility = "hidden";
           img.dataset.transiting = "true";
           console.log(`👁️ Hiding image ${image.id} during transit`);
         }
-        
+
         // Se è una composizione, colora dinamicamente l'immagine
         const isComposition = frame.role === "composition";
         const imageSrc = image.dataUrl || image.url;
-        
+
         console.log(`📦 Frame: ${frame.id}, isComposition: ${isComposition}, symbol: ${image.symbol}`);
-        
+
         if (isComposition && image.symbol) {
           console.log(`🎨 Will colorize: symbol=${image.symbol}`);
           // Carica e colora l'immagine
@@ -425,8 +430,9 @@ function renderImages(activeImageId = null) {
           }
           img.src = imageSrc;
         }
-        
-        artLayer.append(img);
+
+        motionWrap.append(img);
+        artLayer.append(motionWrap);
       }
     }
 
@@ -457,6 +463,20 @@ function renderImages(activeImageId = null) {
   }).format(new Date(latestImage.createdAt));
 }
 
+function getDrawingMotionDelay(seed, index) {
+  return `${-1 * (getStableNumber(seed) % 1200 + index * 180) / 1000}s`;
+}
+
+function getDrawingMotionDuration(seed) {
+  return `${4.8 + (getStableNumber(seed) % 7) * 0.22}s`;
+}
+
+function getStableNumber(value) {
+  return String(value || "")
+    .split("")
+    .reduce((total, character) => total + character.charCodeAt(0), 0);
+}
+
 function getDisplayFrameId(image, index) {
   return normalizeFrameId(image.frame?.id) || frameSlots[index % frameSlots.length].id;
 }
@@ -485,139 +505,183 @@ function calculateFrameOffset(fromFrame, toFrame) {
   // Trova gli elementi DOM dei frame
   const fromElement = displayWall.querySelector(`[data-frame="${fromFrame.id}"]`);
   const toElement = displayWall.querySelector(`[data-frame="${toFrame.id}"]`);
-  
+
   if (!fromElement || !toElement) {
     console.warn(`⚠️ Could not find frames: from=${fromFrame.id}, to=${toFrame.id}`);
     return { x: 0, y: 0 };
   }
-  
+
   // Ottieni le posizioni relative al viewport
   const fromRect = fromElement.getBoundingClientRect();
   const toRect = toElement.getBoundingClientRect();
-  
+
   // Calcola l'offset (da dove deve partire per arrivare a destinazione)
   // Se positivo, significa che deve muoversi a sinistra/su
   // Se negativo, significa che deve muoversi a destra/giù
   const offsetX = fromRect.left - toRect.left;
   const offsetY = fromRect.top - toRect.top;
-  
+
   console.log(`📏 Frame offset: from (${fromRect.left}, ${fromRect.top}) to (${toRect.left}, ${toRect.top}) = (${offsetX}, ${offsetY})`);
-  
+
   return { x: offsetX, y: offsetY };
 }
 
 function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
   console.log(`🎬 Creating transit animation from ${fromFrameId} to ${toFrameId}`);
-  
+
   // Controlla se c'è un percorso salvato
   const savedPath = getPathForTransit(fromFrameId, toFrameId);
-  
+
   // Carica l'immagine
   const image = new Image();
   image.crossOrigin = "anonymous";
-  
+
   image.onload = () => {
     // Trova le posizioni dei frame
     const fromFrame = displayWall.querySelector(`[data-frame="${fromFrameId}"]`);
     const toFrame = displayWall.querySelector(`[data-frame="${toFrameId}"]`);
-    
+
     if (!fromFrame || !toFrame) {
       console.warn(`⚠️ Could not find frames for transit`);
       return;
     }
-    
+
     const fromRect = fromFrame.getBoundingClientRect();
     const toRect = toFrame.getBoundingClientRect();
-    
+
     console.log(`📍 Transit: from (${fromRect.left}, ${fromRect.top}) to (${toRect.left}, ${toRect.top})`);
-    
+
     // Crea il canale con l'immagine colorizzata
     colorizeImageForDisplay(imageSrc, symbol).then((colorizedSrc) => {
       // Crea l'elemento di transito
+      const transitItem = document.createElement("div");
+      transitItem.className = "transit-item";
+      transitItem.style.width = `${Math.min(fromRect.width * 0.82, toRect.width * 0.42)}px`;
+      transitItem.style.height = `${Math.min(fromRect.height * 0.82, toRect.height * 0.82)}px`;
+
+      const transitMotion = document.createElement("div");
+      transitMotion.className = "drawing-motion transit-motion";
+      transitMotion.style.setProperty("--motion-delay", getDrawingMotionDelay(imageSrc, 0));
+      transitMotion.style.setProperty("--motion-duration", getDrawingMotionDuration(imageSrc));
+
       const transitImg = document.createElement("img");
       transitImg.src = colorizedSrc;
-      transitImg.className = "transit-item";
-      transitImg.style.width = `${Math.min(fromRect.width * 0.82, toRect.width * 0.42)}px`;
-      transitImg.style.height = `${Math.min(fromRect.height * 0.82, toRect.height * 0.82)}px`;
+      transitImg.className = "transit-image";
+      transitImg.style.width = "100%";
+      transitImg.style.height = "100%";
       transitImg.style.objectFit = "contain";
-      
+      transitMotion.append(transitImg);
+      transitItem.append(transitMotion);
+
       if (savedPath) {
         console.log(`🛣️ Using saved path with ${savedPath.length} coordinates`);
-        
+
         // Crea un'animazione con i punti della traiettoria
         const startPoint = savedPath[0];
         const endPoint = savedPath[savedPath.length - 1];
-        
+
         // Crea keyframes dinamici basati sul percorso
         const keyframes = createPathKeyframes(savedPath, fromRect, toRect);
         console.log(`🎬 Created ${keyframes.length} keyframes for custom path`);
-        
+
         // Applica l'animazione personalizzata
-        transitImg.style.animation = `none`;
-        transitImg.style.top = "0";
-        transitImg.style.left = "0";
-        transitImg.style.transform = `translate(calc(${startPoint.x}px - 50%), calc(${startPoint.y}px - 50%))`;
-        
-        transitLayer.append(transitImg);
-        
+        transitItem.style.animation = `none`;
+        transitItem.style.top = "0";
+        transitItem.style.left = "0";
+        transitItem.style.transform = `translate(calc(${startPoint.x}px - 50%), calc(${startPoint.y}px - 50%))`;
+
+        transitLayer.append(transitItem);
+
         // Anima manualmente seguendo i punti
-        animateAlongPath(transitImg, savedPath, fromRect, toRect, () => {
+        animateAlongPath(transitItem, savedPath, fromRect, toRect, () => {
           console.log(`✅ Transit animation completed with custom path`);
-          
+
           // Trova e mostra l'immagine nella composizione
           const finalImg = toFrame.querySelector(`img[data-transiting="true"]`);
           if (finalImg) {
+            // Fade out l'immagine animata mentre appare quella finale
+            transitItem.style.transition = "opacity 200ms ease-out";
+            transitItem.style.opacity = "0";
+
+            // Mostra l'immagine finale con fade in
             finalImg.style.visibility = "visible";
+            finalImg.style.opacity = "0";
+            finalImg.style.transition = "opacity 200ms ease-in";
             finalImg.removeAttribute("data-transiting");
-            console.log(`👁️ Showing final image in composition`);
+
+            // Trigger il fade in
+            requestAnimationFrame(() => {
+              finalImg.style.opacity = "1";
+            });
+
+            // Rimuovi l'immagine animata dopo il fade
+            setTimeout(() => {
+              transitItem.remove();
+            }, 200);
+          } else {
+            transitItem.remove();
           }
-          
-          transitImg.remove();
         });
       } else {
         // Percorso di default (linea retta)
         console.log(`📍 No saved path, using default straight line`);
-        
+
         const startX = fromRect.left + fromRect.width / 2;
         const startY = fromRect.top + fromRect.height / 2;
         const endX = toRect.left + toRect.width / 2;
         const endY = toRect.top + toRect.height / 2;
-        
-        transitImg.style.setProperty("--from-x", `${startX}px`);
-        transitImg.style.setProperty("--from-y", `${startY}px`);
-        transitImg.style.setProperty("--to-x", `${endX}px`);
-        transitImg.style.setProperty("--to-y", `${endY}px`);
-        
-        transitImg.style.transform = `translate(calc(var(--from-x) - 50%), calc(var(--from-y) - 50%))`;
-        
-        transitLayer.append(transitImg);
-        
+
+        transitItem.style.setProperty("--from-x", `${startX}px`);
+        transitItem.style.setProperty("--from-y", `${startY}px`);
+        transitItem.style.setProperty("--to-x", `${endX}px`);
+        transitItem.style.setProperty("--to-y", `${endY}px`);
+
+        transitItem.style.transform = `translate(calc(var(--from-x) - 50%), calc(var(--from-y) - 50%))`;
+
+        transitLayer.append(transitItem);
+
         requestAnimationFrame(() => {
-          transitImg.classList.add("animating");
+          transitItem.classList.add("animating");
         });
-        
-        transitImg.addEventListener("animationend", () => {
+
+        transitItem.addEventListener("animationend", () => {
           console.log(`✅ Transit animation completed`);
-          
+
           const finalImg = toFrame.querySelector(`img[data-transiting="true"]`);
           if (finalImg) {
+            // Fade out l'immagine animata mentre appare quella finale
+            transitItem.style.transition = "opacity 200ms ease-out";
+            transitItem.style.opacity = "0";
+
+            // Mostra l'immagine finale con fade in
             finalImg.style.visibility = "visible";
+            finalImg.style.opacity = "0";
+            finalImg.style.transition = "opacity 200ms ease-in";
             finalImg.removeAttribute("data-transiting");
-            console.log(`👁️ Showing final image in composition`);
+
+            // Trigger il fade in
+            requestAnimationFrame(() => {
+              finalImg.style.opacity = "1";
+            });
+
+            // Rimuovi l'immagine animata dopo il fade
+            setTimeout(() => {
+              transitItem.remove();
+            }, 200);
+          } else {
+            transitItem.remove();
           }
-          
-          transitImg.remove();
         }, { once: true });
       }
     }).catch(err => {
       console.error("❌ Transit colorization failed:", err);
     });
   };
-  
+
   image.onerror = () => {
     console.error("❌ Transit image load failed");
   };
-  
+
   image.src = imageSrc;
 }
 
@@ -634,27 +698,27 @@ function createPathKeyframes(coordinates, fromRect, toRect) {
 
 function animateAlongPath(element, coordinates, fromRect, toRect, onComplete) {
   const startTime = Date.now();
-  const duration = 2400; // 2.4 secondi come prima
+  const duration = 3500; // 3.5 secondi (più lento)
   const startPoint = coordinates[0];
-  
+
   function animate() {
     const elapsed = Date.now() - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    
+
     // Interpola il punto sulla traiettoria
     const index = Math.floor(progress * (coordinates.length - 1));
     const coord = coordinates[index];
-    
+
     element.style.transform = `translate(calc(${coord.x}px - 50%), calc(${coord.y}px - 50%))`;
     element.style.opacity = "1";
-    
+
     if (progress < 1) {
       requestAnimationFrame(animate);
     } else {
       onComplete();
     }
   }
-  
+
   animate();
 }
 
@@ -669,7 +733,7 @@ function startPathRecording() {
     console.log(`❌ Registrazione terminata`);
     return;
   }
-  
+
   // Avvia la registrazione
   recordingPath = true;
   recordingFromFrame = null;
@@ -682,27 +746,27 @@ function startPathRecording() {
 
 function handleMouseMove(event) {
   if (!recordingPath) return;
-  
+
   const mouseX = event.clientX;
   const mouseY = event.clientY;
-  
+
   // Traccia il movimento
   recordedCoordinates.push({ x: mouseX, y: mouseY, timestamp: Date.now() });
-  
+
   // Identifica quale frame è sotto il mouse
   const target = document.elementFromPoint(mouseX, mouseY);
   const frameElement = target?.closest("[data-frame]");
-  
+
   if (frameElement) {
     const frameId = frameElement.dataset.frame;
     const frameObj = frameSlots.find(f => f.id === frameId);
-    
+
     if (!recordingFromFrame && frameObj?.role === "single") {
       recordingFromFrame = frameId;
       recordPathStatus.textContent = `📍 Partenza: ${frameId} → Destinazione: (muovi verso composizione)`;
       console.log(`📍 Registrazione da frame: ${frameId}`);
     }
-    
+
     if (recordingFromFrame && frameObj?.role === "composition") {
       recordingToFrame = frameId;
     }
@@ -711,21 +775,21 @@ function handleMouseMove(event) {
 
 function handleClickDuringRecording(event) {
   if (!recordingPath || !recordingFromFrame || !recordingToFrame) return;
-  
+
   // Salva il percorso
   const pathKey = `${recordingFromFrame}_to_${recordingToFrame}`;
   savedPaths.set(pathKey, recordedCoordinates);
   persistSavedPaths(); // Persisti su localStorage
-  
+
   const totalCount = savedPaths.size;
   console.log(`✅ Percorso salvato: ${pathKey} con ${recordedCoordinates.length} coordinate (totale: ${totalCount}/18)`);
   recordPathStatus.textContent = `✅ ${pathKey} salvato! (${recordedCoordinates.length} pt) - ${totalCount}/18 percorsi`;
-  
+
   // Resetta per il prossimo percorso (rimani in modalità recording)
   recordingFromFrame = null;
   recordingToFrame = null;
   recordedCoordinates = [];
-  
+
   // Aspetta un secondo prima di permettere il prossimo
   setTimeout(() => {
     updatePathStatus();
