@@ -394,16 +394,13 @@ function renderImages(activeImageId = null) {
     } else {
       for (let index = 0; index < frameImages.length; index++) {
         const image = frameImages[index];
-        const motionWrap = document.createElement("div");
-        motionWrap.className = "drawing-motion";
-        motionWrap.style.setProperty("--layer-index", index);
-        motionWrap.style.setProperty("--layer-count", frameImages.length);
-        motionWrap.style.setProperty("--motion-delay", getDrawingMotionDelay(image.id, index));
-        motionWrap.style.setProperty("--motion-duration", getDrawingMotionDuration(image.id));
-
         const img = document.createElement("img");
         img.alt = "Disegno caricato";
-        img.className = frame.role === "composition" ? "composition-image" : "single-image";
+        img.style.setProperty("--layer-index", index);
+        img.style.setProperty("--layer-count", frameImages.length);
+        img.style.setProperty("--motion-delay", getDrawingMotionDelay(image.id, index));
+        img.style.setProperty("--motion-duration", getDrawingMotionDuration(image.id));
+        img.className = frame.role === "composition" ? "composition-image drawing-motion" : "single-image drawing-motion";
 
         // Se è un'immagine in transito, nascondi temporaneamente
         if (transitingImages.has(image.id)) {
@@ -431,8 +428,7 @@ function renderImages(activeImageId = null) {
           img.src = imageSrc;
         }
 
-        motionWrap.append(img);
-        artLayer.append(motionWrap);
+        artLayer.append(img);
       }
     }
 
