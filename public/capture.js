@@ -472,7 +472,9 @@ function getCircularMean(hues) {
 function detectSymbolColor(context, width, height, headerHeight) {
   const imageData = context.getImageData(0, 0, width, headerHeight);
   const data = imageData.data;
-  const hues = [];
+  let redVotes = 0;
+  let yellowVotes = 0;
+  let blueVotes = 0;
 
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
@@ -481,40 +483,28 @@ function detectSymbolColor(context, width, height, headerHeight) {
     const a = data[i + 3];
 
     if (a < 200) continue;
-
     const luminance = getLuminance(r, g, b);
-    // Filtra nero e bianco — solo pixel di colore medio rimangono
-    if (luminance < 40 || luminance > 240) continue;
+    if (luminance < 30 || luminance > 245) continue;
 
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const saturation = max === 0 ? 0 : (max - min) / max;
-
-    // Soglia alta: solo pixel fortemente saturi (simbolo colorato ~100%)
-    // Evita che fondale/carta/pelle a bassa saturazione inquinino il campione
-    if (saturation > 0.4) {
-      hues.push(getRGB_Hue(r, g, b));
+    // Voto per canale RGB diretto — match sui colori esatti dei fogli:
+    // Rosso (FF2E00): R≫G e R≫B, G basso
+    if (r > 140 && g < 120 && r > g * 2.2 && r > b * 3.5) {
+      redVotes++;
+    // Giallo (FFCF00): R e G alti, B quasi zero
+    } else if (r > 140 && g > 100 && b < 80 && r > b * 3) {
+      yellowVotes++;
+    // Blu (0067E5): B≫R, B>G, R basso
+    } else if (b > 100 && r < 80 && b > r * 2.5 && b > g * 1.2) {
+      blueVotes++;
     }
   }
 
-  if (hues.length < 15) return "unknown";
+  const total = redVotes + yellowVotes + blueVotes;
+  if (total < 10) return "unknown";
 
-  const meanHue = getCircularMean(hues);
-
-  // Classificazione per distanza circolare ai tre colori canonici dei fogli:
-  // Rosso=cuore H≈5°  /  Giallo=stella H≈50°  /  Blu=fiore H≈211°
-  const redDist = circularHueDist(meanHue, 5);
-  const yellowDist = circularHueDist(meanHue, 50);
-  const blueDist = circularHueDist(meanHue, 211);
-
-  if (redDist <= yellowDist && redDist <= blueDist) return "heart";
-  if (yellowDist <= redDist && yellowDist <= blueDist) return "star";
-  return "flower";
-}
-
-function circularHueDist(a, b) {
-  const d = Math.abs(a - b) % 360;
-  return d > 180 ? 360 - d : d;
+  if (blueVotes > redVotes && blueVotes > yellowVotes) return "flower";
+  if (redVotes > yellowVotes) return "heart";
+  return "star";
 }
 
 
