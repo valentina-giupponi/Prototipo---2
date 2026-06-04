@@ -24,6 +24,7 @@ const frameSlots = [
 
 let images = [];
 let previousImageFrames = new Map();
+const imagesInTransit = new Set();
 
 // Sistema di registrazione percorsi
 let recordingPath = false;
@@ -257,7 +258,7 @@ function renderImages(activeImageId = null) {
       if (isMovingToComposition) {
         transitingImages.add(image.id);
         const imageSrc = image.dataUrl || image.url;
-        createTransitAnimation(imageSrc, image.symbol, previousFrame, frame.id);
+        createTransitAnimation(imageSrc, image.symbol, previousFrame, frame.id, image.id);
       }
     }
 
@@ -290,7 +291,7 @@ function renderImages(activeImageId = null) {
         img.style.setProperty("--motion-duration", getDrawingMotionDuration(image.id));
         img.className = frame.role === "composition" ? "composition-image drawing-motion" : "single-image drawing-motion";
 
-        if (transitingImages.has(image.id)) {
+        if (transitingImages.has(image.id) || imagesInTransit.has(image.id)) {
           img.style.visibility = "hidden";
           img.dataset.transiting = "true";
         }
@@ -338,11 +339,11 @@ function renderImages(activeImageId = null) {
 }
 
 function getDrawingMotionDelay(seed, index) {
-  return `${-1 * (getStableNumber(seed) % 1200 + index * 180) / 1000}s`;
+  return `${-1 * (getStableNumber(seed) % 7200 + index * 600) / 1000}s`;
 }
 
 function getDrawingMotionDuration(seed) {
-  return `${4.8 + (getStableNumber(seed) % 7) * 0.22}s`;
+  return `${4.0 + (getStableNumber(seed) % 10) * 0.44}s`;
 }
 
 function getStableNumber(value) {
@@ -375,7 +376,9 @@ function readLocalImages() {
   }
 }
 
-function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
+function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId, imageId) {
+  imagesInTransit.add(imageId);
+
   const savedPath = getPathForTransit(fromFrameId, toFrameId);
 
   const image = new Image();
@@ -386,6 +389,7 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
     const toFrame = displayWall.querySelector(`[data-frame="${toFrameId}"]`);
 
     if (!fromFrame || !toFrame) {
+      imagesInTransit.delete(imageId);
       return;
     }
 
@@ -413,18 +417,16 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
       transitItem.append(transitMotion);
 
       function revealFinalImage() {
-        const finalImg = toFrame.querySelector(`img[data-transiting="true"]`);
-        if (finalImg) {
-          transitItem.style.transition = "opacity 200ms ease-out";
-          transitItem.style.opacity = "0";
-          finalImg.style.visibility = "visible";
-          finalImg.style.opacity = "0";
-          finalImg.style.transition = "opacity 200ms ease-in";
-          finalImg.removeAttribute("data-transiting");
-          requestAnimationFrame(() => { finalImg.style.opacity = "1"; });
-          setTimeout(() => { transitItem.remove(); }, 200);
-        } else {
-          transitItem.remove();
+        imagesInTransit.delete(imageId);
+        transitItem.remove();
+        // Re-query: renderImages() may have rebuilt the DOM during the transit
+        const currentToFrame = displayWall.querySelector(`[data-frame="${toFrameId}"]`);
+        if (currentToFrame) {
+          const finalImg = currentToFrame.querySelector(`img[data-transiting]`);
+          if (finalImg) {
+            finalImg.removeAttribute("data-transiting");
+            finalImg.style.removeProperty("visibility");
+          }
         }
       }
 
@@ -452,9 +454,10 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
         requestAnimationFrame(() => { transitItem.classList.add("animating"); });
         transitItem.addEventListener("animationend", revealFinalImage, { once: true });
       }
-    }).catch(() => {});
+    }).catch(() => { imagesInTransit.delete(imageId); });
   };
 
+  image.onerror = () => { imagesInTransit.delete(imageId); };
   image.src = imageSrc;
 }
 
