@@ -483,23 +483,26 @@ function detectSymbolColor(context, width, height, headerHeight) {
     if (a < 200) continue;
 
     const luminance = getLuminance(r, g, b);
-    if (luminance < 35 || luminance > 245) continue;
+    // Filtra nero e bianco — solo pixel di colore medio rimangono
+    if (luminance < 40 || luminance > 240) continue;
 
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const saturation = max === 0 ? 0 : (max - min) / max;
 
-    if (saturation > 0.25) {
+    // Soglia alta: solo pixel fortemente saturi (simbolo colorato ~100%)
+    // Evita che fondale/carta/pelle a bassa saturazione inquinino il campione
+    if (saturation > 0.4) {
       hues.push(getRGB_Hue(r, g, b));
     }
   }
 
-  if (hues.length < 8) return "unknown";
+  if (hues.length < 15) return "unknown";
 
   const meanHue = getCircularMean(hues);
 
-  // Usa la distanza circolare ai colori canonici: nessun gap = nessuna zona "sconosciuta"
-  // Rosso=cuore (H≈5°), Giallo=stella (H≈50°), Blu=fiore (H≈211°)
+  // Classificazione per distanza circolare ai tre colori canonici dei fogli:
+  // Rosso=cuore H≈5°  /  Giallo=stella H≈50°  /  Blu=fiore H≈211°
   const redDist = circularHueDist(meanHue, 5);
   const yellowDist = circularHueDist(meanHue, 50);
   const blueDist = circularHueDist(meanHue, 211);
