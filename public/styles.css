@@ -841,6 +841,8 @@ video {
 
 .wall-frame.is-single-frame .wall-frame-art > img {
   position: absolute;
+  inset: 0;
+  margin: auto;
 }
 
 .wall-frame.is-composition-frame .wall-frame-art {

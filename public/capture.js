@@ -33,6 +33,7 @@ const frameSlots = [
 
 let stream = null;
 let pendingScan = null;
+let wallNoticeTimeout = null;
 
 startCameraButton.addEventListener("click", startCamera);
 takePhotoButton.addEventListener("click", takePhoto);
@@ -144,6 +145,7 @@ async function confirmPendingScan() {
     confirmPreview.removeAttribute("src");
     confirmScanButton.disabled = false;
     showView(wallNoticeView);
+    wallNoticeTimeout = setTimeout(returnToScan, 5000);
     setStatus("Disegno salvato in " + (image.frame?.label || "parete") + ". Puoi scansionarne un altro.");
   } catch (error) {
     console.error(error);
@@ -204,6 +206,10 @@ function saveLocalImage(imageData, symbol) {
 }
 
 function returnToScan() {
+  if (wallNoticeTimeout) {
+    clearTimeout(wallNoticeTimeout);
+    wallNoticeTimeout = null;
+  }
   showView(captureView);
   setStatus("Puoi scansionare un nuovo disegno.");
 }
@@ -244,11 +250,6 @@ function readLocalImages() {
 async function createImageDataFromFile(file) {
   const image = await loadImageFromFile(file);
   drawToCanvas(image, image.naturalWidth, image.naturalHeight);
-
-  if (scanModeCheckbox.checked) {
-    return createScanFromCanvas(canvas);
-  }
-
   return createScanFromCanvas(canvas);
 }
 
@@ -695,55 +696,6 @@ function loadImageFromFile(file) {
 
 function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-// Colorazione delle immagini per composizioni
-function getSymbolColor(symbol) {
-  return {
-    heart: { r: 255, g: 46, b: 0 },      // #FF2E00 Rosso
-    flower: { r: 0, g: 103, b: 229 },    // #0067E5 Blu
-    star: { r: 255, g: 207, b: 0 }       // #FFCF00 Giallo
-  }[symbol] || { r: 18, g: 22, b: 26 };   // Nero di default
-}
-
-function colorizeImageDataUrl(dataUrl, symbol) {
-  return new Promise((resolve) => {
-    const image = new Image();
-    
-    image.onload = () => {
-      const colorCanvas = document.createElement("canvas");
-      colorCanvas.width = image.width;
-      colorCanvas.height = image.height;
-      const ctx = colorCanvas.getContext("2d", { willReadFrequently: true });
-      
-      ctx.drawImage(image, 0, 0);
-      const imageData = ctx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
-      const data = imageData.data;
-      const { r, g, b } = getSymbolColor(symbol);
-      
-      // Cambia i pixel neri (tratto) con il colore del simbolo
-      for (let i = 0; i < data.length; i += 4) {
-        const pixelR = data[i];
-        const pixelG = data[i + 1];
-        const pixelB = data[i + 2];
-        const pixelA = data[i + 3];
-        
-        // Se il pixel è scuro (il tratto), sostituiscilo con il colore
-        const luminance = getLuminance(pixelR, pixelG, pixelB);
-        if (luminance < 100) {
-          data[i] = r;
-          data[i + 1] = g;
-          data[i + 2] = b;
-        }
-      }
-      
-      ctx.putImageData(imageData, 0, 0);
-      resolve(colorCanvas.toDataURL("image/png"));
-    };
-    
-    image.onerror = () => resolve(dataUrl);
-    image.src = dataUrl;
-  });
 }
 
 function setStatus(message, isError = false) {
