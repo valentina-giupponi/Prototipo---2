@@ -294,6 +294,7 @@ function renderImages(activeImageId = null) {
         if (transitingImages.has(image.id) || imagesInTransit.has(image.id)) {
           img.style.visibility = "hidden";
           img.dataset.transiting = "true";
+          img.dataset.imageId = image.id;
         }
 
         const isComposition = frame.role === "composition";
@@ -396,11 +397,28 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId, imageI
     const fromRect = fromFrame.getBoundingClientRect();
     const toRect = toFrame.getBoundingClientRect();
 
+    // Trova l'immagine nascosta specifica e misura la sua posizione nel layout
+    // (visibility:hidden mantiene il layout, quindi il rect è valido)
+    const finalImgInFrame = toFrame.querySelector(`img[data-image-id="${imageId}"][data-transiting]`);
+    const finalRect = finalImgInFrame ? finalImgInFrame.getBoundingClientRect() : null;
+
+    // Punto esatto dove il clone deve arrivare = centro dell'immagine finale nella cornice
+    const targetX = finalRect && finalRect.width > 0
+      ? finalRect.left + finalRect.width / 2
+      : toRect.left + toRect.width / 2;
+    const targetY = finalRect && finalRect.height > 0
+      ? finalRect.top + finalRect.height / 2
+      : toRect.top + toRect.height / 2;
+
     colorizeImageForDisplay(imageSrc, symbol).then((colorizedSrc) => {
       const transitItem = document.createElement("div");
       transitItem.className = "transit-item";
-      transitItem.style.width = `${Math.min(fromRect.width * 0.82, toRect.width * 0.42)}px`;
-      transitItem.style.height = `${Math.min(fromRect.height * 0.82, toRect.height * 0.82)}px`;
+
+      // Dimensione identica all'immagine finale: nessun cambio di scala all'arrivo
+      const imgW = finalRect && finalRect.width > 0 ? finalRect.width : Math.min(toRect.width * 0.42, 190);
+      const imgH = finalRect && finalRect.height > 0 ? finalRect.height : Math.min(toRect.height * 0.82, 190);
+      transitItem.style.width = `${imgW}px`;
+      transitItem.style.height = `${imgH}px`;
 
       const transitMotion = document.createElement("div");
       transitMotion.className = "drawing-motion transit-motion";
@@ -418,41 +436,33 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId, imageI
 
       function revealFinalImage() {
         imagesInTransit.delete(imageId);
+        // A questo punto il clone è esattamente sopra l'immagine finale:
+        // swap istantaneo → nessuna differenza visibile
         transitItem.remove();
-        // Re-query: renderImages() may have rebuilt the DOM during the transit
         const currentToFrame = displayWall.querySelector(`[data-frame="${toFrameId}"]`);
         if (currentToFrame) {
-          const finalImg = currentToFrame.querySelector(`img[data-transiting]`);
+          const finalImg = currentToFrame.querySelector(`img[data-image-id="${imageId}"][data-transiting]`)
+            || currentToFrame.querySelector(`img[data-transiting]`);
           if (finalImg) {
             finalImg.removeAttribute("data-transiting");
+            finalImg.dataset.imageId && delete finalImg.dataset.imageId;
             finalImg.style.removeProperty("visibility");
           }
         }
       }
 
+      transitItem.style.top = "0";
+      transitItem.style.left = "0";
+      transitLayer.append(transitItem);
+
       if (savedPath) {
         const startPoint = savedPath[0];
-        transitItem.style.animation = "none";
-        transitItem.style.top = "0";
-        transitItem.style.left = "0";
         transitItem.style.transform = `translate(calc(${startPoint.x}px - 50%), calc(${startPoint.y}px - 50%))`;
-        transitLayer.append(transitItem);
-        animateAlongPath(transitItem, savedPath, fromRect, toRect, revealFinalImage);
+        animateAlongPathToTarget(transitItem, savedPath, targetX, targetY, revealFinalImage);
       } else {
         const startX = fromRect.left + fromRect.width / 2;
         const startY = fromRect.top + fromRect.height / 2;
-        const endX = toRect.left + toRect.width / 2;
-        const endY = toRect.top + toRect.height / 2;
-
-        transitItem.style.setProperty("--from-x", `${startX}px`);
-        transitItem.style.setProperty("--from-y", `${startY}px`);
-        transitItem.style.setProperty("--to-x", `${endX}px`);
-        transitItem.style.setProperty("--to-y", `${endY}px`);
-        transitItem.style.transform = `translate(calc(var(--from-x) - 50%), calc(var(--from-y) - 50%))`;
-        transitLayer.append(transitItem);
-
-        requestAnimationFrame(() => { transitItem.classList.add("animating"); });
-        transitItem.addEventListener("animationend", revealFinalImage, { once: true });
+        animateStraightToTarget(transitItem, startX, startY, targetX, targetY, revealFinalImage);
       }
     }).catch(() => { imagesInTransit.delete(imageId); });
   };
@@ -461,32 +471,29 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId, imageI
   image.src = imageSrc;
 }
 
-function createPathKeyframes(coordinates, fromRect, toRect) {
-  // Crea keyframes basati sulla traiettoria registrata
-  const keyframes = [];
-  for (let i = 0; i < coordinates.length; i += Math.max(1, Math.floor(coordinates.length / 20))) {
-    const coord = coordinates[i];
-    const progress = i / (coordinates.length - 1);
-    keyframes.push({ x: coord.x, y: coord.y, progress });
-  }
-  return keyframes;
-}
+// Segue il percorso registrato, nell'ultimo 25% converge esattamente
+// verso targetX/targetY (posizione reale dell'immagine nella cornice di composizione)
+function animateAlongPathToTarget(element, coordinates, targetX, targetY, onComplete) {
+  const startTime = performance.now();
+  const duration = 3500;
+  const convergenceAt = 0.75;
 
-function animateAlongPath(element, coordinates, fromRect, toRect, onComplete) {
-  const startTime = Date.now();
-  const duration = 3500; // 3.5 secondi (più lento)
-  const startPoint = coordinates[0];
-
-  function animate() {
-    const elapsed = Date.now() - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-
-    // Interpola il punto sulla traiettoria
+  function animate(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
     const index = Math.floor(progress * (coordinates.length - 1));
     const coord = coordinates[index];
 
-    element.style.transform = `translate(calc(${coord.x}px - 50%), calc(${coord.y}px - 50%))`;
-    element.style.opacity = "1";
+    let x = coord.x;
+    let y = coord.y;
+
+    if (progress > convergenceAt) {
+      const t = (progress - convergenceAt) / (1 - convergenceAt);
+      const ease = t * t * (3 - 2 * t); // smoothstep
+      x = coord.x + (targetX - coord.x) * ease;
+      y = coord.y + (targetY - coord.y) * ease;
+    }
+
+    element.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 50%))`;
 
     if (progress < 1) {
       requestAnimationFrame(animate);
@@ -495,7 +502,32 @@ function animateAlongPath(element, coordinates, fromRect, toRect, onComplete) {
     }
   }
 
-  animate();
+  requestAnimationFrame(animate);
+}
+
+// Animazione linea retta (fallback senza percorso registrato)
+function animateStraightToTarget(element, startX, startY, targetX, targetY, onComplete) {
+  const startTime = performance.now();
+  const duration = 3500;
+
+  function animate(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const ease = progress < 0.5
+      ? 2 * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+    const x = startX + (targetX - startX) * ease;
+    const y = startY + (targetY - startY) * ease;
+    element.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 50%))`;
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      onComplete();
+    }
+  }
+
+  requestAnimationFrame(animate);
 }
 
 // ===================== SISTEMA DI REGISTRAZIONE PERCORSI =====================

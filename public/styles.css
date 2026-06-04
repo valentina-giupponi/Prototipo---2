@@ -893,21 +893,6 @@ video {
   place-items: center;
 }
 
-.transit-item.animating {
-  animation: transit-slide 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-@keyframes transit-slide {
-  from {
-    transform: translate(var(--from-x), var(--from-y)) scale(1);
-    opacity: 1;
-  }
-  to {
-    transform: translate(var(--to-x), var(--to-y)) scale(1);
-    opacity: 1;
-  }
-}
-
 
 .wall-frame-placeholder {
   color: rgba(104, 112, 122, 0.8);
