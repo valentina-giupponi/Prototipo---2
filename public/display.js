@@ -422,8 +422,11 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId, imageI
 
       const transitMotion = document.createElement("div");
       transitMotion.className = "drawing-motion transit-motion";
-      transitMotion.style.setProperty("--motion-delay", getDrawingMotionDelay(imageSrc, 0));
-      transitMotion.style.setProperty("--motion-duration", getDrawingMotionDuration(imageSrc));
+      // Stesso delay e duration dell'immagine finale → stessa fase dell'animazione al momento dello swap
+      const motionDelay = finalImgInFrame?.style.getPropertyValue("--motion-delay") || getDrawingMotionDelay(imageSrc, 0);
+      const motionDuration = finalImgInFrame?.style.getPropertyValue("--motion-duration") || getDrawingMotionDuration(imageSrc);
+      transitMotion.style.setProperty("--motion-delay", motionDelay);
+      transitMotion.style.setProperty("--motion-duration", motionDuration);
 
       const transitImg = document.createElement("img");
       transitImg.src = colorizedSrc;
