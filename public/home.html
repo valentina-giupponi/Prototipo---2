@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Il mio GOMMA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&family=Syne:wght@800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="home.css">
+  </head>
+  <body>
+
+    <div class="bg-blob bg-blob-1" aria-hidden="true"></div>
+    <div class="bg-blob bg-blob-2" aria-hidden="true"></div>
+
+    <div class="home-layout">
+      <header class="home-header">
+        <h1 class="home-title">IL <span class="lower">mio</span><br>GOMMA</h1>
+        <p class="home-subtitle">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 13L13 3M13 3H5M13 3V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          I miei disegni
+        </p>
+      </header>
+
+      <main class="home-gallery" id="homeGallery">
+        <div class="empty-state" id="emptyState">
+          <p class="empty-heading">La tua galleria<br>è vuota!</p>
+
+          <div class="empty-character" aria-hidden="true">
+            <!--
+              Sostituisci questa immagine con il personaggio GOMMA ufficiale.
+              Salva il file come: public/assets/character.png (o .svg)
+              e cambia src qui sotto.
+            -->
+            <svg viewBox="0 0 260 290" overflow="visible" xmlns="http://www.w3.org/2000/svg" class="character-svg">
+              <path d="M130 238 C88 212 34 178 34 128 C34 92 56 70 82 73 C102 76 118 92 128 108 C138 92 154 76 174 73 C200 70 222 92 222 128 C222 178 172 212 130 238Z" fill="#FF2E00"/>
+              <circle cx="105" cy="90" r="19" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="8"/>
+              <circle cx="155" cy="90" r="19" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="8"/>
+              <circle cx="110" cy="140" r="9" fill="white"/>
+              <circle cx="150" cy="140" r="9" fill="white"/>
+              <circle cx="112" cy="143" r="4.5" fill="#FF2E00"/>
+              <circle cx="152" cy="143" r="4.5" fill="#FF2E00"/>
+              <circle cx="123" cy="158" r="4" fill="white"/>
+              <circle cx="137" cy="158" r="4" fill="white"/>
+              <path d="M 108 178 Q 130 194 152 178" stroke="white" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+              <path d="M 66 198 Q 82 190 100 196" stroke="white" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+              <path d="M 72 212 Q 86 205 104 210" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <path d="M 40 128 C 22 120 4 108 2 92" stroke="#FF2E00" stroke-width="20" fill="none" stroke-linecap="round"/>
+              <ellipse cx="0" cy="85" rx="18" ry="13" fill="#FF2E00"/>
+              <path d="M -16 78 L 0 71 L 16 78" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M -16 88 L 0 82 L 16 88" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M 220 128 C 238 120 256 108 258 92" stroke="#FF2E00" stroke-width="20" fill="none" stroke-linecap="round"/>
+              <ellipse cx="260" cy="85" rx="18" ry="13" fill="#FF2E00"/>
+              <path d="M 244 78 L 260 71 L 276 78" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M 244 88 L 260 82 L 276 88" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="111" y="232" width="20" height="46" rx="10" fill="#FF2E00"/>
+              <rect x="135" y="232" width="20" height="46" rx="10" fill="#FF2E00"/>
+              <ellipse cx="121" cy="276" rx="16" ry="9" fill="#FF2E00"/>
+              <ellipse cx="145" cy="276" rx="16" ry="9" fill="#FF2E00"/>
+            </svg>
+          </div>
+
+          <p class="empty-hint">
+            Premi su <span class="empty-plus-ref">+</span> per aggiungere<br>nuovi disegni
+          </p>
+        </div>
+
+        <div class="drawings-grid" id="drawingsGrid" hidden></div>
+      </main>
+    </div>
+
+    <nav class="bottom-nav">
+      <a href="home.html" class="nav-btn is-active" aria-label="I miei disegni">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <path d="M5 21 C5 21 7 8 13 6 C19 4 21 21 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="13" cy="13" r="2.5" fill="currentColor"/>
+        </svg>
+      </a>
+      <a href="index.html" class="nav-btn" aria-label="Aggiungi disegno">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <path d="M4 20 L9 15 L14 19 L19 11 L22 14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19 7 L20 6 C21 5 22.5 5 23.5 6 C24.5 7 24.5 8.5 23.5 9.5 L22.5 10.5 L19 7Z" stroke="currentColor" stroke-width="2" fill="none"/>
+        </svg>
+      </a>
+      <a href="frame.html" class="nav-btn" aria-label="Attiva disegni">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <path d="M3 8V5h3M23 8V5h-3M3 18v3h3M23 18v3h-3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="13" cy="13" r="3.5" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </a>
+      <button class="nav-fab" id="navFab" aria-label="Aggiungi" aria-expanded="false">
+        <span class="fab-icon" aria-hidden="true">+</span>
+      </button>
+    </nav>
+
+    <div class="fab-overlay" id="fabOverlay" aria-hidden="true"></div>
+
+    <div class="fab-menu" id="fabMenu" aria-hidden="true">
+      <a href="index.html" class="fab-menu-item">
+        <span class="fab-menu-label">AGGIUNGI<br>DISEGNO</span>
+        <span class="fab-menu-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M5 22 L11 16 L16 20 L21 12 L24 15" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 7 L22 6 C23 5 24.5 5 25.5 6 C26.5 7 26.5 8.5 25.5 9.5 L24.5 10.5 L21 7Z" stroke="white" stroke-width="2.2" fill="none"/>
+          </svg>
+        </span>
+      </a>
+      <a href="frame.html" class="fab-menu-item">
+        <span class="fab-menu-label">ATTIVA<br>DISEGNI</span>
+        <span class="fab-menu-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M3 9V5h4M25 9V5h-4M3 19v4h4M25 19v4h-4" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="14" cy="14" r="4" stroke="white" stroke-width="2.2"/>
+          </svg>
+        </span>
+      </a>
+      <button class="fab-close" id="fabClose" aria-label="Chiudi">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M5 5 L17 17 M17 5 L5 17" stroke="#FF2E00" stroke-width="2.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <script src="home.js"></script>
+  </body>
+</html>

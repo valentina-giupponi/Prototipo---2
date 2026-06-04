@@ -40,7 +40,7 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
     if (req.method === "GET" && url.pathname === "/") {
-      return serveFile(res, path.join(PUBLIC_DIR, "index.html"));
+      return serveFile(res, path.join(PUBLIC_DIR, "home.html"));
     }
 
     if (req.method === "GET" && url.pathname === "/api/latest") {

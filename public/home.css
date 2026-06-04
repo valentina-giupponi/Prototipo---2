@@ -1,0 +1,389 @@
+/*
+  HOME PAGE — IL MIO GOMMA
+  Font: Lima (custom) + Syne 800 come fallback · Poppins 600 per i testi
+  Per aggiungere il font Lima: crea public/assets/fonts/ e metti Lima.woff2 + Lima.woff
+*/
+
+@font-face {
+  font-family: "Lima";
+  src: url("assets/fonts/Lima.woff2") format("woff2"),
+       url("assets/fonts/Lima.woff") format("woff");
+  font-weight: 400 900;
+  font-display: swap;
+}
+
+:root {
+  --blue:         #0055FF;
+  --blue-deep:    #003ACC;
+  --blue-blob:    rgba(0, 24, 160, 0.38);
+  --red:          #FF2E00;
+  --white:        #FFFFFF;
+  --dark:         #0A0A10;
+  --nav-h:        84px;
+
+  --font-display: "Lima", "Syne", "Space Grotesk", system-ui, sans-serif;
+  --font-body:    "Poppins", system-ui, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--blue);
+  color: var(--white);
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ── BACKGROUND BLOBS ─────────────────────────────────── */
+
+.bg-blob {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--blue-blob);
+}
+
+.bg-blob-1 {
+  width: 200px;
+  height: 190px;
+  top: -40px;
+  right: -24px;
+  border-radius: 38% 62% 72% 28% / 44% 52% 48% 56%;
+}
+
+.bg-blob-2 {
+  width: 260px;
+  height: 340px;
+  bottom: 14%;
+  left: -90px;
+  border-radius: 62% 38% 28% 72% / 52% 44% 56% 48%;
+}
+
+/* ── LAYOUT ───────────────────────────────────────────── */
+
+.home-layout {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  padding: 0 24px calc(var(--nav-h) + 24px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── HEADER ───────────────────────────────────────────── */
+
+.home-header {
+  padding-top: max(28px, env(safe-area-inset-top));
+  padding-bottom: 8px;
+}
+
+.home-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(3.2rem, 14vw, 5rem);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  color: var(--white);
+}
+
+.home-title .lower {
+  text-transform: lowercase;
+}
+
+.home-subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.home-subtitle svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* ── GALLERY ──────────────────────────────────────────── */
+
+.home-gallery {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+/* ── EMPTY STATE ──────────────────────────────────────── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.empty-heading {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(1.25rem, 5vw, 1.6rem);
+  line-height: 1.3;
+  color: var(--white);
+  margin-bottom: 8px;
+}
+
+.empty-character {
+  width: min(280px, 78vw);
+  margin: 12px auto 16px;
+}
+
+.character-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.22));
+}
+
+.empty-hint {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(0.9rem, 3.8vw, 1.05rem);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.empty-plus-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--red);
+  color: white;
+  border-radius: 50%;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* ── DRAWINGS GRID (when populated) ──────────────────── */
+
+.drawings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  width: 100%;
+}
+
+.drawing-card {
+  aspect-ratio: 3 / 4;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.drawing-card img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+}
+
+/* ── BOTTOM NAVIGATION ────────────────────────────────── */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--nav-h);
+  padding: 0 20px calc(16px + env(safe-area-inset-bottom)) 20px;
+  background: var(--dark);
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  border-radius: 12px;
+  transition: color 160ms ease, background 160ms ease;
+  text-decoration: none;
+}
+
+.nav-btn:hover,
+.nav-btn.is-active {
+  color: var(--white);
+}
+
+.nav-btn.is-active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── FAB BUTTON ───────────────────────────────────────── */
+
+.nav-fab {
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  background: var(--red);
+  color: var(--white);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 24px rgba(255, 46, 0, 0.4);
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), background 160ms ease;
+}
+
+.nav-fab:active {
+  transform: scale(0.92);
+}
+
+.fab-icon {
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 1;
+  display: block;
+  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-fab[aria-expanded="true"] .fab-icon {
+  transform: rotate(45deg);
+}
+
+/* ── FAB OVERLAY ──────────────────────────────────────── */
+
+.fab-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+}
+
+.fab-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── FAB MENU ─────────────────────────────────────────── */
+
+.fab-menu {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 0 32px calc(48px + env(safe-area-inset-bottom));
+  pointer-events: none;
+  transform: translateY(30px);
+  opacity: 0;
+  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 260ms ease;
+}
+
+.fab-menu.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fab-menu-item {
+  width: 100%;
+  max-width: 320px;
+  background: var(--red);
+  color: var(--white);
+  border-radius: 100px;
+  padding: 16px 24px 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  text-decoration: none;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.fab-menu-item:active {
+  transform: scale(0.97);
+  background: #e02600;
+}
+
+.fab-menu-label {
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.fab-menu-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab-close {
+  width: 60px;
+  height: 60px;
+  background: #f0ebe4;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  transition: transform 160ms ease;
+}
+
+.fab-close:active {
+  transform: scale(0.92);
+}
+
+/* ── STAGGER ANIMATION FOR MENU ITEMS ─────────────────── */
+
+.fab-menu-item:nth-child(1) { transition-delay: 40ms; }
+.fab-menu-item:nth-child(2) { transition-delay: 0ms; }
+
+.fab-menu:not(.is-open) .fab-menu-item:nth-child(1) { transition-delay: 0ms; }
+.fab-menu:not(.is-open) .fab-menu-item:nth-child(2) { transition-delay: 0ms; }
