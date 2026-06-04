@@ -3,6 +3,8 @@ const transitLayer = document.querySelector("#transitLayer");
 const emptyState = document.querySelector("#emptyState");
 const connectionState = document.querySelector("#connectionState");
 const imageTime = document.querySelector("#imageTime");
+const recordPathButton = document.querySelector("#recordPathButton");
+const recordPathStatus = document.querySelector("#recordPathStatus");
 
 const usesBrowserStorage = location.protocol === "file:";
 const localImageKey = "drawing-scan-prototype.latest";
@@ -24,8 +26,65 @@ let images = [];
 let previousCompositionImages = new Set(); // Traccia quali immagini sono in composizioni
 let previousImageFrames = new Map(); // Traccia dove erano le immagini prima
 
+// Sistema di registrazione percorsi
+let recordingPath = false;
+let recordingFromFrame = null;
+let recordingToFrame = null;
+let recordedCoordinates = [];
+const savedPaths = new Map(); // Mappa di percorsi salvati: "001_to_101" -> [coordinates]
+
+// Carica percorsi da localStorage
+function loadSavedPaths() {
+  try {
+    // RESET: Decommentare la riga qui sotto per resettare tutti i percorsi
+    // localStorage.removeItem('recordedPaths');
+    
+    const stored = localStorage.getItem('recordedPaths');
+    if (stored) {
+      const paths = JSON.parse(stored);
+      for (const [key, coords] of Object.entries(paths)) {
+        savedPaths.set(key, coords);
+      }
+      console.log(`📂 Caricati ${savedPaths.size} percorsi da localStorage`);
+      updatePathStatus();
+    }
+  } catch (e) {
+    console.warn('Impossibile caricare percorsi da localStorage:', e);
+  }
+}
+
+// Salva percorsi su localStorage
+function persistSavedPaths() {
+  try {
+    const pathsObj = {};
+    for (const [key, coords] of savedPaths.entries()) {
+      pathsObj[key] = coords;
+    }
+    localStorage.setItem('recordedPaths', JSON.stringify(pathsObj));
+    console.log(`💾 Percorsi salvati su localStorage (${savedPaths.size} percorsi)`);
+    updatePathStatus();
+  } catch (e) {
+    console.warn('Impossibile salvare percorsi su localStorage:', e);
+  }
+}
+
+// Aggiorna il display dello stato
+function updatePathStatus() {
+  const totalPossible = 18; // 6 small frames × 3 composition frames
+  const count = savedPaths.size;
+  if (recordingPath && !recordingFromFrame) {
+    recordPathStatus.textContent = `${count}/${totalPossible} percorsi registrati - Muovi il mouse dalla cornice singola alla composizione...`;
+  }
+}
+
+loadSavedPaths(); // Carica percorsi precedentemente registrati
 loadImages();
 connectToImageEvents();
+
+// Setup registrazione percorsi
+recordPathButton.addEventListener("click", startPathRecording);
+document.addEventListener("mousemove", handleMouseMove);
+document.addEventListener("click", handleClickDuringRecording);
 
 // Funzione per colorare le immagini nelle composizioni
 function getSymbolColor(symbol) {
@@ -450,6 +509,9 @@ function calculateFrameOffset(fromFrame, toFrame) {
 function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
   console.log(`🎬 Creating transit animation from ${fromFrameId} to ${toFrameId}`);
   
+  // Controlla se c'è un percorso salvato
+  const savedPath = getPathForTransit(fromFrameId, toFrameId);
+  
   // Carica l'immagine
   const image = new Image();
   image.crossOrigin = "anonymous";
@@ -479,41 +541,74 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
       transitImg.style.height = `${Math.min(fromRect.height * 0.82, toRect.height * 0.82)}px`;
       transitImg.style.objectFit = "contain";
       
-      // Posiziona all'inizio (dalla cornice di partenza)
-      const startX = fromRect.left + fromRect.width / 2;
-      const startY = fromRect.top + fromRect.height / 2;
-      const endX = toRect.left + toRect.width / 2;
-      const endY = toRect.top + toRect.height / 2;
-      
-      transitImg.style.setProperty("--from-x", `${startX}px`);
-      transitImg.style.setProperty("--from-y", `${startY}px`);
-      transitImg.style.setProperty("--to-x", `${endX}px`);
-      transitImg.style.setProperty("--to-y", `${endY}px`);
-      
-      // Aggiusta per centering
-      transitImg.style.transform = `translate(calc(var(--from-x) - 50%), calc(var(--from-y) - 50%))`;
-      
-      transitLayer.append(transitImg);
-      
-      // Attiva l'animazione
-      requestAnimationFrame(() => {
-        transitImg.classList.add("animating");
-      });
-      
-      // Quando finisce l'animazione, mostra l'immagine nella composizione
-      transitImg.addEventListener("animationend", () => {
-        console.log(`✅ Transit animation completed, showing final image`);
+      if (savedPath) {
+        console.log(`🛣️ Using saved path with ${savedPath.length} coordinates`);
         
-        // Trova e mostra l'immagine nella composizione
-        const finalImg = toFrame.querySelector(`img[data-transiting="true"]`);
-        if (finalImg) {
-          finalImg.style.visibility = "visible";
-          finalImg.removeAttribute("data-transiting");
-          console.log(`👁️ Showing final image in composition`);
-        }
+        // Crea un'animazione con i punti della traiettoria
+        const startPoint = savedPath[0];
+        const endPoint = savedPath[savedPath.length - 1];
         
-        transitImg.remove();
-      }, { once: true });
+        // Crea keyframes dinamici basati sul percorso
+        const keyframes = createPathKeyframes(savedPath, fromRect, toRect);
+        console.log(`🎬 Created ${keyframes.length} keyframes for custom path`);
+        
+        // Applica l'animazione personalizzata
+        transitImg.style.animation = `none`;
+        transitImg.style.top = "0";
+        transitImg.style.left = "0";
+        transitImg.style.transform = `translate(calc(${startPoint.x}px - 50%), calc(${startPoint.y}px - 50%))`;
+        
+        transitLayer.append(transitImg);
+        
+        // Anima manualmente seguendo i punti
+        animateAlongPath(transitImg, savedPath, fromRect, toRect, () => {
+          console.log(`✅ Transit animation completed with custom path`);
+          
+          // Trova e mostra l'immagine nella composizione
+          const finalImg = toFrame.querySelector(`img[data-transiting="true"]`);
+          if (finalImg) {
+            finalImg.style.visibility = "visible";
+            finalImg.removeAttribute("data-transiting");
+            console.log(`👁️ Showing final image in composition`);
+          }
+          
+          transitImg.remove();
+        });
+      } else {
+        // Percorso di default (linea retta)
+        console.log(`📍 No saved path, using default straight line`);
+        
+        const startX = fromRect.left + fromRect.width / 2;
+        const startY = fromRect.top + fromRect.height / 2;
+        const endX = toRect.left + toRect.width / 2;
+        const endY = toRect.top + toRect.height / 2;
+        
+        transitImg.style.setProperty("--from-x", `${startX}px`);
+        transitImg.style.setProperty("--from-y", `${startY}px`);
+        transitImg.style.setProperty("--to-x", `${endX}px`);
+        transitImg.style.setProperty("--to-y", `${endY}px`);
+        
+        transitImg.style.transform = `translate(calc(var(--from-x) - 50%), calc(var(--from-y) - 50%))`;
+        
+        transitLayer.append(transitImg);
+        
+        requestAnimationFrame(() => {
+          transitImg.classList.add("animating");
+        });
+        
+        transitImg.addEventListener("animationend", () => {
+          console.log(`✅ Transit animation completed`);
+          
+          const finalImg = toFrame.querySelector(`img[data-transiting="true"]`);
+          if (finalImg) {
+            finalImg.style.visibility = "visible";
+            finalImg.removeAttribute("data-transiting");
+            console.log(`👁️ Showing final image in composition`);
+          }
+          
+          transitImg.remove();
+        }, { once: true });
+      }
     }).catch(err => {
       console.error("❌ Transit colorization failed:", err);
     });
@@ -524,4 +619,120 @@ function createTransitAnimation(imageSrc, symbol, fromFrameId, toFrameId) {
   };
   
   image.src = imageSrc;
+}
+
+function createPathKeyframes(coordinates, fromRect, toRect) {
+  // Crea keyframes basati sulla traiettoria registrata
+  const keyframes = [];
+  for (let i = 0; i < coordinates.length; i += Math.max(1, Math.floor(coordinates.length / 20))) {
+    const coord = coordinates[i];
+    const progress = i / (coordinates.length - 1);
+    keyframes.push({ x: coord.x, y: coord.y, progress });
+  }
+  return keyframes;
+}
+
+function animateAlongPath(element, coordinates, fromRect, toRect, onComplete) {
+  const startTime = Date.now();
+  const duration = 2400; // 2.4 secondi come prima
+  const startPoint = coordinates[0];
+  
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Interpola il punto sulla traiettoria
+    const index = Math.floor(progress * (coordinates.length - 1));
+    const coord = coordinates[index];
+    
+    element.style.transform = `translate(calc(${coord.x}px - 50%), calc(${coord.y}px - 50%))`;
+    element.style.opacity = "1";
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      onComplete();
+    }
+  }
+  
+  animate();
+}
+
+// ===================== SISTEMA DI REGISTRAZIONE PERCORSI =====================
+
+function startPathRecording() {
+  if (recordingPath) {
+    // Ferma la registrazione
+    recordingPath = false;
+    recordPathButton.classList.remove("recording");
+    recordPathStatus.textContent = "Registrazione terminata";
+    console.log(`❌ Registrazione terminata`);
+    return;
+  }
+  
+  // Avvia la registrazione
+  recordingPath = true;
+  recordingFromFrame = null;
+  recordingToFrame = null;
+  recordedCoordinates = [];
+  recordPathButton.classList.add("recording");
+  recordPathStatus.textContent = "Muovi il mouse dalla cornice singola alla composizione...";
+  console.log(`🔴 Registrazione AVVIATA - muovi il mouse da una cornice singola alla cornice di composizione`);
+}
+
+function handleMouseMove(event) {
+  if (!recordingPath) return;
+  
+  const mouseX = event.clientX;
+  const mouseY = event.clientY;
+  
+  // Traccia il movimento
+  recordedCoordinates.push({ x: mouseX, y: mouseY, timestamp: Date.now() });
+  
+  // Identifica quale frame è sotto il mouse
+  const target = document.elementFromPoint(mouseX, mouseY);
+  const frameElement = target?.closest("[data-frame]");
+  
+  if (frameElement) {
+    const frameId = frameElement.dataset.frame;
+    const frameObj = frameSlots.find(f => f.id === frameId);
+    
+    if (!recordingFromFrame && frameObj?.role === "single") {
+      recordingFromFrame = frameId;
+      recordPathStatus.textContent = `📍 Partenza: ${frameId} → Destinazione: (muovi verso composizione)`;
+      console.log(`📍 Registrazione da frame: ${frameId}`);
+    }
+    
+    if (recordingFromFrame && frameObj?.role === "composition") {
+      recordingToFrame = frameId;
+    }
+  }
+}
+
+function handleClickDuringRecording(event) {
+  if (!recordingPath || !recordingFromFrame || !recordingToFrame) return;
+  
+  // Salva il percorso
+  const pathKey = `${recordingFromFrame}_to_${recordingToFrame}`;
+  savedPaths.set(pathKey, recordedCoordinates);
+  persistSavedPaths(); // Persisti su localStorage
+  
+  const totalCount = savedPaths.size;
+  console.log(`✅ Percorso salvato: ${pathKey} con ${recordedCoordinates.length} coordinate (totale: ${totalCount}/18)`);
+  recordPathStatus.textContent = `✅ ${pathKey} salvato! (${recordedCoordinates.length} pt) - ${totalCount}/18 percorsi`;
+  
+  // Resetta per il prossimo percorso (rimani in modalità recording)
+  recordingFromFrame = null;
+  recordingToFrame = null;
+  recordedCoordinates = [];
+  
+  // Aspetta un secondo prima di permettere il prossimo
+  setTimeout(() => {
+    updatePathStatus();
+  }, 1500);
+}
+
+function getPathForTransit(fromFrameId, toFrameId) {
+  const pathKey = `${fromFrameId}_to_${toFrameId}`;
+  return savedPaths.get(pathKey);
 }
