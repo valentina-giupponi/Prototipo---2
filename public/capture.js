@@ -476,34 +476,39 @@ function detectSymbolColor(context, width, height, headerHeight) {
   let yellowVotes = 0;
   let blueVotes = 0;
 
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    const a = data[i + 3];
+  for (let y = 0; y < headerHeight; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
 
-    if (a < 200) continue;
-    const luminance = getLuminance(r, g, b);
-    if (luminance < 30 || luminance > 245) continue;
+      if (a < 200) continue;
+      const luminance = getLuminance(r, g, b);
+      if (luminance < 30 || luminance > 245) continue;
 
-    // Voto per canale RGB diretto — match sui colori esatti dei fogli:
-    // Rosso (FF2E00): R≫G e R≫B, G basso
-    if (r > 140 && g < 120 && r > g * 2.2 && r > b * 3.5) {
-      redVotes++;
-    // Giallo (FFCF00): R e G alti, B quasi zero
-    } else if (r > 140 && g > 100 && b < 80 && r > b * 3) {
-      yellowVotes++;
-    // Blu (0067E5): B≫R, B>G, R basso
-    } else if (b > 100 && r < 80 && b > r * 2.5 && b > g * 1.2) {
-      blueVotes++;
+      // Cuore rosso (FF2E00) — zona SINISTRA del foglio
+      // r - g > 80: distingue rosso da giallo (giallo ha R-G≈48) anche con anti-aliasing
+      if (x < width * 0.5 && r > 150 && r - g > 80 && b < 120) {
+        redVotes++;
+      // Stella gialla (FFCF00) — zona SINISTRA
+      // R e G alti, B quasi zero
+      } else if (x < width * 0.5 && r > 140 && g > 100 && b < 80) {
+        yellowVotes++;
+      // Fiore blu (0067E5) — zona DESTRA del foglio
+      // B dominante, R basso
+      } else if (x > width * 0.45 && b > 100 && r < 80 && b > r * 2.5 && b > g * 1.1) {
+        blueVotes++;
+      }
     }
   }
 
-  const total = redVotes + yellowVotes + blueVotes;
-  if (total < 10) return "unknown";
+  const maxVotes = Math.max(redVotes, yellowVotes, blueVotes);
+  if (maxVotes < 5) return "unknown";
 
-  if (blueVotes > redVotes && blueVotes > yellowVotes) return "flower";
-  if (redVotes > yellowVotes) return "heart";
+  if (blueVotes === maxVotes) return "flower";
+  if (redVotes === maxVotes) return "heart";
   return "star";
 }
 
