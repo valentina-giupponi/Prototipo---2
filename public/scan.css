@@ -9,6 +9,7 @@
 :root {
   --red:   #FF2E00;
   --dark:  #0A0A10;
+  --blue:  #0040D0;
   --white: #FFFFFF;
   --font-display: "Lima", "Syne", system-ui, sans-serif;
   --font-body:    "Poppins", system-ui, sans-serif;
@@ -234,17 +235,47 @@
 
 .overlay-status.error { color: #FF6B50; }
 
-/* Loading spinner */
-.scan-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--white);
-  border-radius: 50%;
-  animation: spin 900ms linear infinite;
+/* ── LOADING VIEW ────────────────────────────────────── */
+
+.scan-loading {
+  background: var(--blue);
+  gap: 8px;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+.scan-loading .scan-back {
+  position: absolute;
+  top: max(20px, env(safe-area-inset-top));
+  left: 20px;
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--white);
+  backdrop-filter: blur(8px);
+}
+
+.loading-character {
+  width: min(300px, 64vw);
+  height: auto;
+  margin-bottom: 28px;
+  animation: loading-bob 2.4s ease-in-out infinite;
+}
+
+@keyframes loading-bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-14px) rotate(2deg); }
+}
+
+.loading-title {
+  font-family: var(--font-body);
+  font-size: clamp(1.6rem, 7vw, 2.2rem);
+  font-weight: 600;
+  color: var(--white);
+}
+
+.loading-subtitle {
+  font-family: var(--font-body);
+  font-size: clamp(0.95rem, 4vw, 1.15rem);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+}
 
 /* ── CONFIRM VIEW ────────────────────────────────────── */
 
@@ -303,7 +334,7 @@
 /* ── WALL NOTICE VIEW ────────────────────────────────── */
 
 .scan-wall {
-  background: #0055FF;
+  background: var(--blue);
   gap: 28px;
 }
 

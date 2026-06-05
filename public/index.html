@@ -59,10 +59,15 @@
     </section>
 
     <!-- ── LOADING VIEW ───────────────────────────────── -->
-    <section id="loadingView" class="scan-overlay" aria-label="Analisi disegno" hidden>
-      <p class="overlay-eyebrow">Analisi</p>
-      <h1 class="overlay-title">Stiamo analizzando<br>il tuo disegno</h1>
-      <div class="scan-spinner" aria-hidden="true"></div>
+    <section id="loadingView" class="scan-overlay scan-loading" aria-label="Analisi disegno" hidden>
+      <a href="home.html" class="scan-back" aria-label="Torna indietro">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M13 4 L7 10 L13 16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <img src="assets/character/Character_Analisi.png" alt="" class="loading-character">
+      <h1 class="loading-title">Ancora un attimo!</h1>
+      <p class="loading-subtitle">Stiamo elaborando il tuo disegno</p>
     </section>
 
     <!-- ── CONFIRM VIEW ───────────────────────────────── -->
