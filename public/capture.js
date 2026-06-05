@@ -14,7 +14,6 @@ const confirmPreview = document.querySelector("#confirmPreview");
 const retakeScanButton = document.querySelector("#retakeScan");
 const confirmScanButton = document.querySelector("#confirmScan");
 const confirmStatus = document.querySelector("#confirmStatus");
-const returnToScanButton = document.querySelector("#returnToScan");
 
 const usesBrowserStorage = location.protocol === "file:";
 const localImageKey = "drawing-scan-prototype.latest";
@@ -40,7 +39,6 @@ takePhotoButton.addEventListener("click", takePhoto);
 fileInput.addEventListener("change", uploadSelectedFile);
 retakeScanButton.addEventListener("click", discardPendingScan);
 confirmScanButton.addEventListener("click", confirmPendingScan);
-returnToScanButton.addEventListener("click", returnToScan);
 
 async function startCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -145,7 +143,7 @@ async function confirmPendingScan() {
     confirmPreview.removeAttribute("src");
     confirmScanButton.disabled = false;
     showView(wallNoticeView);
-    wallNoticeTimeout = setTimeout(returnToScan, 5000);
+    wallNoticeTimeout = setTimeout(goToHome, 5000);
     setStatus("Disegno salvato in " + (image.frame?.label || "parete") + ". Puoi scansionarne un altro.");
   } catch (error) {
     console.error(error);
@@ -205,13 +203,8 @@ function saveLocalImage(imageData, symbol) {
   return image;
 }
 
-function returnToScan() {
-  if (wallNoticeTimeout) {
-    clearTimeout(wallNoticeTimeout);
-    wallNoticeTimeout = null;
-  }
-  showView(captureView);
-  setStatus("Puoi scansionare un nuovo disegno.");
+function goToHome() {
+  window.location.href = "home.html";
 }
 
 function showView(view) {
