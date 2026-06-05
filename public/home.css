@@ -45,6 +45,7 @@ body {
 
 /* ── BACKGROUND DECORATION (GOMMA swirl) ──────────────── */
 
+/* Livello sopra il colore di sfondo, sotto tutti gli altri elementi. */
 .bg-line {
   position: fixed;
   inset: 0;
@@ -54,8 +55,7 @@ body {
   height: 100%;
   object-fit: cover;
   object-position: center;
-  opacity: 0.45;
-  mix-blend-mode: soft-light;
+  opacity: 0.6;
 }
 
 /* ── LAYOUT ───────────────────────────────────────────── */
@@ -114,15 +114,17 @@ body {
 
 /* ── EMPTY STATE ──────────────────────────────────────── */
 
+/* Titolo, personaggio e hint formano un gruppo unico centrato
+   verticalmente nello spazio tra header e FAB (come la reference). */
 .empty-state {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: clamp(24px, 5vh, 52px);
   text-align: center;
   width: 100%;
-  padding: 4vh 0 2vh;
 }
 
 .empty-heading {
@@ -133,14 +135,7 @@ body {
   color: var(--white);
 }
 
-/* Il personaggio è centrato rispetto all'INTERO schermo (viewport),
-   indipendente da header e hint che restano nel flusso. */
 .empty-character {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1;
   width: min(280px, 78vw);
 }
 
