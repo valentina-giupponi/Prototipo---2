@@ -2,50 +2,60 @@
 <html lang="it">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Scansione cornice</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="scan.css">
   </head>
-  <body class="capture-page">
-    <main class="app-shell frame-scan-shell">
-      <section class="capture-workspace" aria-label="Scansione cornice">
-        <div class="topbar">
-          <div>
-            <p class="eyebrow">Riconoscimento cornice</p>
-            <h1>Scansiona la cornice</h1>
-          </div>
-          <div class="nav-actions">
-            <a class="screen-link" href="index.html">Scansiona disegno</a>
-            <a class="screen-link" href="markers.html" target="_blank" rel="noreferrer">Marker</a>
-          </div>
-        </div>
+  <body class="scan-body">
 
-        <div class="camera-panel">
-          <video id="camera" autoplay playsinline muted></video>
-          <canvas id="snapshot" hidden></canvas>
-          <div id="cameraMessage" class="camera-message">
-            Inquadra il codice sulla cornice.
-          </div>
-        </div>
+    <!-- ── CAPTURE VIEW (stesso aspetto dello scanner disegno) ── -->
+    <section id="captureView" class="scan-view" aria-label="Scansione cornice">
 
-        <div class="controls">
-          <button id="startCamera" type="button">Attiva camera</button>
-          <button id="scanFrame" type="button" disabled>Riconosci cornice</button>
-        </div>
+      <video id="camera" class="scan-video" autoplay playsinline muted></video>
+      <canvas id="snapshot" hidden></canvas>
 
-        <p id="status" class="status" role="status">Nessuna cornice riconosciuta.</p>
-      </section>
+      <div id="a4Guide" class="scan-a4-guide" aria-hidden="true"></div>
 
-      <aside class="preview-panel" aria-label="Disegno associato">
-        <p class="eyebrow">Disegno nella cornice</p>
-        <div class="preview-frame">
-          <img id="matchedImage" alt="Disegno associato alla cornice">
-          <span id="matchPlaceholder">Qui apparirà il disegno collegato alla cornice.</span>
-        </div>
-        <p id="matchInfo" class="muted">Scansiona un marker per cercare il disegno associato.</p>
-      </aside>
-    </main>
+      <div id="cameraMessage" class="scan-hint">
+        Inquadra il codice della cornice
+      </div>
+
+      <a href="home.html" class="scan-back" aria-label="Torna indietro">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M13 4 L7 10 L13 16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+
+      <div class="scan-bottom">
+        <div class="scan-spacer" aria-hidden="true"></div>
+        <button id="scanFrame" class="scan-shutter" aria-label="Scansiona cornice" disabled>
+          <span class="shutter-ring" aria-hidden="true"></span>
+        </button>
+        <div class="scan-spacer" aria-hidden="true"></div>
+      </div>
+
+      <!-- elementi di utilità richiesti da frame-scan.js -->
+      <button id="startCamera" aria-hidden="true" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0"></button>
+      <p id="status" class="scan-status" role="status"></p>
+    </section>
+
+    <!-- ── PAGINA DI CARICAMENTO DOPO LO SCATTO (4s) ── -->
+    <section id="frameLoadingView" class="scan-overlay scan-meet" aria-label="Incontro" hidden>
+      <h1 class="wall-title">OCChI<br>aI QUaDRI!</h1>
+      <p class="wall-subtitle">La tua cosa da niente<br>sta prendendo vita</p>
+      <img src="assets/character/Character_incontro.png" class="meet-character" alt="" aria-hidden="true">
+    </section>
+
+    <!-- stub nascosti usati da frame-scan.js -->
+    <img id="matchedImage" alt="" hidden style="display:none">
+    <span id="matchPlaceholder" hidden style="display:none"></span>
+    <p id="matchInfo" hidden style="display:none"></p>
 
     <script src="frame-scan.js"></script>
+    <script>
+      window.addEventListener("load", () => { startCamera(); });
+    </script>
   </body>
 </html>

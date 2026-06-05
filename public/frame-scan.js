@@ -7,6 +7,8 @@ const cameraMessage = document.querySelector("#cameraMessage");
 const matchedImage = document.querySelector("#matchedImage");
 const matchPlaceholder = document.querySelector("#matchPlaceholder");
 const matchInfo = document.querySelector("#matchInfo");
+const captureView = document.querySelector("#captureView");
+const frameLoadingView = document.querySelector("#frameLoadingView");
 function debugLog_func(msg) {
   console.log(msg);
 }
@@ -148,6 +150,17 @@ async function scanFrame() {
   showMatch(match, marker);
   setStatus(`Riconosciuta ${marker.label}: disegno trovato.`);
   await moveMatchedImage(match, marker.frameId);
+  showFrameMeeting();
+}
+
+// Mostra la pagina di caricamento "OCChI aI QUaDRI!" per 4s, poi torna alla home
+function showFrameMeeting() {
+  if (captureView) captureView.hidden = true;
+  if (frameLoadingView) {
+    frameLoadingView.hidden = false;
+    frameLoadingView.classList.add("is-active");
+  }
+  setTimeout(() => { window.location.href = "home.html"; }, 4000);
 }
 
 function findImageByFrame(frameId) {
