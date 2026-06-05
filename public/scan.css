@@ -388,8 +388,8 @@
 .scan-wall {
   background: var(--blue);
   justify-content: flex-start;
-  gap: 14px;
-  padding: max(56px, calc(env(safe-area-inset-top) + 40px)) 28px calc(40px + env(safe-area-inset-bottom));
+  gap: 16px;
+  padding: max(76px, calc(env(safe-area-inset-top) + 56px)) 28px calc(40px + env(safe-area-inset-bottom));
   overflow: hidden;
 }
 
@@ -413,13 +413,14 @@
   z-index: 2;
 }
 
-/* Personaggio ancorato nell'angolo in basso a destra, leggermente
-   tagliato fuori dallo schermo (come la reference) */
+/* Personaggio grande, ancorato in basso e leggermente a destra:
+   mano in alto a sinistra visibile, braccio destro al bordo, gambe
+   tagliate dal bordo inferiore (come la reference) */
 .wall-character {
   position: absolute;
-  right: -8%;
-  bottom: -2%;
-  width: min(80%, 440px);
+  right: -4%;
+  bottom: -5%;
+  width: min(92%, 480px);
   height: auto;
   z-index: 1;
   pointer-events: none;
@@ -428,16 +429,16 @@
 .wall-continue {
   position: absolute;
   left: 50%;
-  bottom: calc(40px + env(safe-area-inset-bottom));
+  bottom: calc(58px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 3;
   background: #f5f0ec;
   color: var(--dark);
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   text-decoration: none;
-  padding: 18px 52px;
+  padding: 16px 46px;
   border-radius: 100px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
   transition: transform 120ms ease;
