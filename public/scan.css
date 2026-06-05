@@ -413,14 +413,12 @@
   z-index: 2;
 }
 
-/* Personaggio grande, ancorato in basso e leggermente a destra:
-   mano in alto a sinistra visibile, braccio destro al bordo, gambe
-   tagliate dal bordo inferiore (come la reference) */
+/* Asset già pre-tagliato: appoggiato all'angolo in basso a destra */
 .wall-character {
   position: absolute;
-  right: -4%;
-  bottom: -5%;
-  width: min(92%, 480px);
+  right: 0;
+  bottom: 0;
+  width: min(88%, 460px);
   height: auto;
   z-index: 1;
   pointer-events: none;
