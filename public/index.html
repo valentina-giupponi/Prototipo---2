@@ -2,77 +2,99 @@
 <html lang="it">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Scansione disegno</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="scan.css">
   </head>
-  <body class="capture-page">
-    <main class="mobile-flow">
-      <section id="captureView" class="flow-screen is-active" aria-label="Scansione disegno">
-        <div class="topbar">
-          <div>
-            <p class="eyebrow">Scansione disegno</p>
-            <h1>Scansiona il disegno</h1>
-          </div>
-          <div class="nav-actions">
-            <a class="screen-link" href="frame.html">Scansiona cornice</a>
-            <a class="screen-link" href="display.html" target="_blank" rel="noreferrer">Apri parete</a>
-          </div>
-        </div>
+  <body class="scan-body">
 
-        <div class="camera-panel">
-          <video id="camera" autoplay playsinline muted></video>
-          <canvas id="snapshot" hidden></canvas>
-          <div id="cameraMessage" class="camera-message">Premi “Attiva camera” per iniziare.</div>
-        </div>
+    <!-- ── CAPTURE VIEW ───────────────────────────────── -->
+    <section id="captureView" class="scan-view" aria-label="Scansione disegno">
 
-        <div class="controls">
-          <button id="startCamera" type="button">Attiva camera</button>
-          <button id="takePhoto" type="button" disabled>Scansiona disegno</button>
-          <label class="file-button" for="fileInput">Carica immagine</label>
-          <input id="fileInput" type="file" accept="image/*">
-          <label class="toggle-control">
-            <input id="scanMode" type="checkbox" checked>
-            <span>Scansione tratto</span>
-          </label>
-        </div>
+      <!-- Camera full-screen -->
+      <video id="camera" class="scan-video" autoplay playsinline muted></video>
+      <canvas id="snapshot" hidden></canvas>
 
-        <p id="status" class="status" role="status">Nessuna scansione acquisita.</p>
-      </section>
+      <!-- A4 guide overlay (crop target + dark vignette outside) -->
+      <div id="a4Guide" class="scan-a4-guide" aria-hidden="true"></div>
 
-      <section id="loadingView" class="flow-screen flow-message" aria-label="Analisi disegno" hidden>
-        <p class="eyebrow">Analisi</p>
-        <h1>Stiamo analizzando il tuo disegno</h1>
-        <div class="loader" aria-hidden="true"></div>
-      </section>
+      <!-- Hint (hidden after camera starts) -->
+      <div id="cameraMessage" class="scan-hint">
+        Inquadra il foglio nel rettangolo
+      </div>
 
-      <section id="confirmView" class="flow-screen" aria-label="Conferma scansione" hidden>
-        <div class="topbar">
-          <div>
-            <p class="eyebrow">Conferma scansione</p>
-            <h1>Visualizza disegno</h1>
-          </div>
-        </div>
+      <!-- Back button -->
+      <a href="home.html" class="scan-back" aria-label="Torna indietro">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M13 4 L7 10 L13 16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
 
-        <div class="scan-preview">
-          <img id="confirmPreview" alt="Disegno scansionato da confermare">
-        </div>
+      <!-- Bottom controls -->
+      <div class="scan-bottom">
+        <!-- Upload from gallery (secondary) -->
+        <label class="scan-gallery-btn" for="fileInput" aria-label="Carica dal rullino">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <rect x="2" y="7" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="2"/>
+            <path d="M6 7V5a2 2 0 012-2h6a2 2 0 012 2v2" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </label>
+        <input id="fileInput" type="file" accept="image/*" hidden>
 
-        <div class="controls confirm-controls">
-          <button id="retakeScan" class="secondary-button" type="button">Torno indietro</button>
-          <button id="confirmScan" type="button">Conferma scansione</button>
-        </div>
+        <!-- Main shutter button -->
+        <button id="takePhoto" class="scan-shutter" aria-label="Scatta" disabled>
+          <span class="shutter-ring" aria-hidden="true"></span>
+        </button>
 
-        <p id="confirmStatus" class="status" role="status">Controlla il disegno prima di salvarlo.</p>
-      </section>
+        <!-- Spacer for symmetry -->
+        <div class="scan-spacer" aria-hidden="true"></div>
+      </div>
 
-      <section id="wallNoticeView" class="flow-screen flow-message wall-notice" aria-label="Messaggio parete" hidden>
-        <p class="eyebrow">Parete</p>
-        <h1>Occhi alla parete, il tuo disegno sta per prendere vita</h1>
-        <button id="returnToScan" type="button">Torna alla scansione</button>
-      </section>
-    </main>
+      <!-- Hidden utility elements (used by capture.js) -->
+      <button id="startCamera" aria-hidden="true" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0"></button>
+      <input id="scanMode" type="checkbox" checked aria-hidden="true" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
+      <p id="status" class="scan-status" role="status"></p>
+    </section>
+
+    <!-- ── LOADING VIEW ───────────────────────────────── -->
+    <section id="loadingView" class="scan-overlay" aria-label="Analisi disegno" hidden>
+      <p class="overlay-eyebrow">Analisi</p>
+      <h1 class="overlay-title">Stiamo analizzando<br>il tuo disegno</h1>
+      <div class="scan-spinner" aria-hidden="true"></div>
+    </section>
+
+    <!-- ── CONFIRM VIEW ───────────────────────────────── -->
+    <section id="confirmView" class="scan-overlay scan-confirm" aria-label="Conferma scansione" hidden>
+      <div class="confirm-top">
+        <p class="overlay-eyebrow">Conferma</p>
+        <h1 class="overlay-title">Controlla<br>il disegno</h1>
+      </div>
+
+      <div class="confirm-preview">
+        <img id="confirmPreview" alt="Disegno scansionato">
+      </div>
+
+      <div class="confirm-actions">
+        <button id="retakeScan" class="btn-secondary" type="button">Rifai</button>
+        <button id="confirmScan" class="btn-primary" type="button">Salva</button>
+      </div>
+
+      <p id="confirmStatus" class="overlay-status" role="status">Controlla il disegno prima di salvarlo.</p>
+    </section>
+
+    <!-- ── WALL NOTICE VIEW ───────────────────────────── -->
+    <section id="wallNoticeView" class="scan-overlay scan-wall" aria-label="Messaggio parete" hidden>
+      <p class="overlay-eyebrow">Parete</p>
+      <h1 class="overlay-title">Occhi alla parete,<br>il tuo disegno<br>sta per prendere vita</h1>
+      <button id="returnToScan" class="btn-primary" type="button">Torna alla scansione</button>
+    </section>
 
     <script src="capture.js"></script>
+    <script>
+      // Auto-start camera on page load
+      window.addEventListener("load", () => { startCamera(); });
+    </script>
   </body>
 </html>

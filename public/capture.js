@@ -516,23 +516,54 @@ function detectSymbolColor(context, width, height, headerHeight) {
 function drawVisibleCameraToCanvas() {
   const sourceWidth = camera.videoWidth;
   const sourceHeight = camera.videoHeight;
-  const viewport = camera.getBoundingClientRect();
-  const viewportAspect = viewport.width / viewport.height;
-  const sourceAspect = sourceWidth / sourceHeight;
-  let cropX = 0;
-  let cropY = 0;
-  let cropWidth = sourceWidth;
-  let cropHeight = sourceHeight;
+  const videoRect = camera.getBoundingClientRect();
+  const guide = document.querySelector("#a4Guide");
+  const guideRect = guide ? guide.getBoundingClientRect() : videoRect;
 
-  if (sourceAspect > viewportAspect) {
-    cropWidth = Math.round(sourceHeight * viewportAspect);
-    cropX = Math.round((sourceWidth - cropWidth) / 2);
+  // Il video usa object-fit: cover. Calcolo come la sorgente viene mappata
+  // sul box visualizzato, così posso ritagliare esattamente la regione
+  // della guida A4 che l'utente vede sullo schermo.
+  const sourceAspect = sourceWidth / sourceHeight;
+  const boxAspect = videoRect.width / videoRect.height;
+  let renderedWidth;
+  let renderedHeight;
+  let offsetX;
+  let offsetY;
+
+  if (sourceAspect > boxAspect) {
+    renderedHeight = videoRect.height;
+    renderedWidth = videoRect.height * sourceAspect;
+    offsetX = (videoRect.width - renderedWidth) / 2;
+    offsetY = 0;
   } else {
-    cropHeight = Math.round(sourceWidth / viewportAspect);
-    cropY = Math.round((sourceHeight - cropHeight) / 2);
+    renderedWidth = videoRect.width;
+    renderedHeight = videoRect.width / sourceAspect;
+    offsetX = 0;
+    offsetY = (videoRect.height - renderedHeight) / 2;
   }
 
-  drawCroppedToCanvas(camera, cropX, cropY, cropWidth, cropHeight);
+  const scaleX = sourceWidth / renderedWidth;
+  const scaleY = sourceHeight / renderedHeight;
+  const guideLeftInBox = guideRect.left - videoRect.left;
+  const guideTopInBox = guideRect.top - videoRect.top;
+
+  let cropX = (guideLeftInBox - offsetX) * scaleX;
+  let cropY = (guideTopInBox - offsetY) * scaleY;
+  let cropWidth = guideRect.width * scaleX;
+  let cropHeight = guideRect.height * scaleY;
+
+  cropX = Math.max(0, Math.min(cropX, sourceWidth));
+  cropY = Math.max(0, Math.min(cropY, sourceHeight));
+  cropWidth = Math.min(cropWidth, sourceWidth - cropX);
+  cropHeight = Math.min(cropHeight, sourceHeight - cropY);
+
+  drawCroppedToCanvas(
+    camera,
+    Math.round(cropX),
+    Math.round(cropY),
+    Math.round(cropWidth),
+    Math.round(cropHeight)
+  );
 }
 
 function drawToCanvas(source, sourceWidth, sourceHeight) {

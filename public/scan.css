@@ -1,0 +1,342 @@
+@font-face {
+  font-family: "Lima";
+  src: url("assets/fonts/Lima-Regular.woff2") format("woff2"),
+       url("assets/fonts/Lima-Regular.woff") format("woff");
+  font-weight: 400 900;
+  font-display: swap;
+}
+
+:root {
+  --red:   #FF2E00;
+  --dark:  #0A0A10;
+  --white: #FFFFFF;
+  --font-display: "Lima", "Syne", system-ui, sans-serif;
+  --font-body:    "Poppins", system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.scan-body {
+  overflow: hidden;
+  background: var(--dark);
+  font-family: var(--font-body);
+}
+
+/* ── CAPTURE VIEW ────────────────────────────────────── */
+
+.scan-view {
+  position: fixed;
+  inset: 0;
+}
+
+.scan-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A4 guide: il rettangolo che mostra dove posizionare il foglio.
+   Il box-shadow copre il resto dello schermo con un velo scuro. */
+.scan-a4-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, calc(-50% - 52px));
+  width: min(calc(100vw - 32px), calc((100dvh - 200px) * 0.707));
+  aspect-ratio: 210 / 297;
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
+  border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Corner accents on the guide */
+.scan-a4-guide::before,
+.scan-a4-guide::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: var(--white);
+  border-style: solid;
+}
+
+.scan-a4-guide::before {
+  top: -3px;
+  left: -3px;
+  border-width: 4px 0 0 4px;
+  border-radius: 4px 0 0 0;
+}
+
+.scan-a4-guide::after {
+  bottom: -3px;
+  right: -3px;
+  border-width: 0 4px 4px 0;
+  border-radius: 0 0 4px 0;
+}
+
+/* Back button */
+.scan-back {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  z-index: 10;
+  width: 46px;
+  height: 46px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--dark);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 120ms ease;
+}
+
+.scan-back:active { transform: scale(0.92); }
+
+/* Hint message (shown before camera starts) */
+.scan-hint {
+  position: absolute;
+  top: max(76px, calc(env(safe-area-inset-top) + 60px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--white);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 100px;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.scan-hint[hidden] { display: none; }
+
+/* Bottom controls */
+.scan-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 20px 40px calc(36px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Upload button */
+.scan-gallery-btn {
+  width: 46px;
+  height: 46px;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 140ms ease;
+}
+
+.scan-gallery-btn:active { background: rgba(255,255,255,0.25); }
+
+/* Shutter button */
+.scan-shutter {
+  width: 74px;
+  height: 74px;
+  background: transparent;
+  border: 4px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  padding: 5px;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.scan-shutter:disabled { opacity: 0.45; }
+.scan-shutter:active:not(:disabled) { transform: scale(0.92); }
+
+.shutter-ring {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--red);
+  border-radius: 50%;
+}
+
+.scan-spacer { width: 46px; }
+
+/* Status text overlay */
+.scan-status {
+  position: absolute;
+  bottom: calc(130px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+  max-width: 80%;
+  min-height: 1em;
+}
+
+/* ── OVERLAY VIEWS ───────────────────────────────────── */
+
+.scan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: max(32px, env(safe-area-inset-top)) 28px calc(32px + env(safe-area-inset-bottom));
+  background: var(--dark);
+  color: var(--white);
+  text-align: center;
+}
+
+.scan-overlay[hidden] { display: none; }
+
+.overlay-eyebrow {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.overlay-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 9vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.0;
+}
+
+.overlay-status {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  min-height: 1.2em;
+}
+
+.overlay-status.error { color: #FF6B50; }
+
+/* Loading spinner */
+.scan-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── CONFIRM VIEW ────────────────────────────────────── */
+
+.scan-confirm {
+  background: #f5f0ec;
+  color: #1e2329;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+.scan-confirm .overlay-eyebrow { color: rgba(30,35,41,0.4); }
+
+.confirm-top {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.confirm-top .overlay-title {
+  font-size: clamp(1.8rem, 8vw, 3rem);
+  color: #1e2329;
+}
+
+.confirm-preview {
+  flex: 1;
+  width: 100%;
+  max-height: 52dvh;
+  background: #e8e2dc;
+  border-radius: 14px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.confirm-preview img {
+  width: 100%;
+  height: 100%;
+  max-height: 52dvh;
+  object-fit: contain;
+  display: block;
+}
+
+.confirm-preview img:not([src]) { display: none; }
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.scan-confirm .overlay-status { color: rgba(30,35,41,0.5); }
+.scan-confirm .overlay-status.error { color: #c0392b; }
+
+/* ── WALL NOTICE VIEW ────────────────────────────────── */
+
+.scan-wall {
+  background: #0055FF;
+  gap: 28px;
+}
+
+/* ── SHARED BUTTONS ──────────────────────────────────── */
+
+.btn-primary,
+.btn-secondary {
+  flex: 1;
+  height: 54px;
+  border: none;
+  border-radius: 100px;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.btn-primary:active,
+.btn-secondary:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--red);
+  color: var(--white);
+}
+
+.btn-secondary {
+  background: rgba(30, 35, 41, 0.1);
+  color: #1e2329;
+}
+
+.scan-wall .btn-primary {
+  max-width: 280px;
+  background: var(--white);
+  color: var(--dark);
+}
