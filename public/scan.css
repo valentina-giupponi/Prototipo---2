@@ -280,56 +280,108 @@
 /* ── CONFIRM VIEW ────────────────────────────────────── */
 
 .scan-confirm {
-  background: #f5f0ec;
-  color: #1e2329;
+  background: var(--blue);
+  color: var(--white);
   justify-content: flex-start;
-  gap: 16px;
+  gap: clamp(10px, 2vh, 18px);
+  padding: max(40px, env(safe-area-inset-top)) 28px calc(48px + env(safe-area-inset-bottom));
+  overflow: hidden;
 }
 
-.scan-confirm .overlay-eyebrow { color: rgba(30,35,41,0.4); }
-
-.confirm-top {
+/* Swirl: livello sopra il colore di sfondo, sotto il contenuto */
+.confirm-swirl {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
-.confirm-top .overlay-title {
-  font-size: clamp(1.8rem, 8vw, 3rem);
-  color: #1e2329;
+.scan-confirm > *:not(.confirm-swirl) {
+  position: relative;
+  z-index: 1;
 }
 
+.confirm-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 9vw, 3.2rem);
+  line-height: 1.0;
+  text-align: center;
+  color: var(--white);
+}
+
+/* Il disegno scansionato: il tratto scuro diventa bianco sul blu */
 .confirm-preview {
   flex: 1;
   width: 100%;
-  max-height: 52dvh;
-  background: #e8e2dc;
-  border-radius: 14px;
-  overflow: hidden;
   display: grid;
   place-items: center;
+  overflow: hidden;
+  padding: 12px 0;
 }
 
 .confirm-preview img {
-  width: 100%;
-  height: 100%;
-  max-height: 52dvh;
+  max-width: 84%;
+  max-height: 100%;
   object-fit: contain;
   display: block;
+  filter: brightness(0) invert(1);
 }
 
 .confirm-preview img:not([src]) { display: none; }
 
-.confirm-actions {
-  display: flex;
-  gap: 12px;
-  width: 100%;
+.confirm-question {
+  font-family: var(--font-body);
+  font-size: clamp(1.2rem, 5.5vw, 1.6rem);
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.25;
+  color: var(--white);
 }
 
-.scan-confirm .overlay-status { color: rgba(30,35,41,0.5); }
-.scan-confirm .overlay-status.error { color: #c0392b; }
+.confirm-actions {
+  display: flex;
+  gap: 36px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.confirm-btn {
+  width: 72px;
+  height: 72px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 120ms ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.confirm-btn:active { transform: scale(0.9); }
+
+.confirm-btn-no  { background: var(--dark); }
+.confirm-btn-yes { background: var(--red); }
+
+.confirm-status {
+  margin-top: 10px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  min-height: 1em;
+}
+
+.confirm-status.error { color: #FFD0C5; }
 
 /* ── WALL NOTICE VIEW ────────────────────────────────── */
 

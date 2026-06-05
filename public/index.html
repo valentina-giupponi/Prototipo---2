@@ -72,21 +72,30 @@
 
     <!-- ── CONFIRM VIEW ───────────────────────────────── -->
     <section id="confirmView" class="scan-overlay scan-confirm" aria-label="Conferma scansione" hidden>
-      <div class="confirm-top">
-        <p class="overlay-eyebrow">Conferma</p>
-        <h1 class="overlay-title">Controlla<br>il disegno</h1>
-      </div>
+      <img src="assets/character/linea_2.png" class="confirm-swirl" alt="" aria-hidden="true">
+
+      <h1 class="confirm-title">È TUTTO<br>(QUASI) PRONTA!</h1>
 
       <div class="confirm-preview">
         <img id="confirmPreview" alt="Disegno scansionato">
       </div>
 
+      <p class="confirm-question">Sei soddisfatto<br>del risultato?</p>
+
       <div class="confirm-actions">
-        <button id="retakeScan" class="btn-secondary" type="button">Rifai</button>
-        <button id="confirmScan" class="btn-primary" type="button">Salva</button>
+        <button id="retakeScan" class="confirm-btn confirm-btn-no" type="button" aria-label="Rifai la scansione">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M6 6 L18 18 M18 6 L6 18" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button id="confirmScan" class="confirm-btn confirm-btn-yes" type="button" aria-label="Conferma il disegno">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <path d="M5 13 L11 19 L21 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
 
-      <p id="confirmStatus" class="overlay-status" role="status">Controlla il disegno prima di salvarlo.</p>
+      <p id="confirmStatus" class="confirm-status" role="status"></p>
     </section>
 
     <!-- ── WALL NOTICE VIEW ───────────────────────────── -->
