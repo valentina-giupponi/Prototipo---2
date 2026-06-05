@@ -420,7 +420,7 @@
   position: absolute;
   right: 0;
   bottom: 0;
-  width: min(78%, 410px);
+  width: min(70%, 370px);
   height: auto;
   z-index: 1;
   pointer-events: none;
