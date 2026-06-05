@@ -85,9 +85,6 @@ body {
   color: var(--white);
 }
 
-.home-title .lower {
-  text-transform: lowercase;
-}
 
 .home-subtitle {
   display: inline-flex;
@@ -136,9 +133,14 @@ body {
   color: var(--white);
 }
 
-/* Il personaggio è l'elemento centrale: justify-content space-between
-   lo posiziona a metà tra il titolo (in alto) e l'hint (in basso). */
+/* Il personaggio è centrato rispetto all'INTERO schermo (viewport),
+   indipendente da header e hint che restano nel flusso. */
 .empty-character {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
   width: min(280px, 78vw);
 }
 
