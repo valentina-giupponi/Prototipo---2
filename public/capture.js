@@ -143,7 +143,7 @@ async function confirmPendingScan() {
     confirmPreview.removeAttribute("src");
     confirmScanButton.disabled = false;
     showView(wallNoticeView);
-    wallNoticeTimeout = setTimeout(goToHome, 5000);
+    wallNoticeTimeout = setTimeout(goToHome, 10000);
     setStatus("Disegno salvato in " + (image.frame?.label || "parete") + ". Puoi scansionarne un altro.");
   } catch (error) {
     console.error(error);
