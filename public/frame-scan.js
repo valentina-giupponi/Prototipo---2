@@ -9,6 +9,15 @@ const matchPlaceholder = document.querySelector("#matchPlaceholder");
 const matchInfo = document.querySelector("#matchInfo");
 const captureView = document.querySelector("#captureView");
 const frameLoadingView = document.querySelector("#frameLoadingView");
+const frameChoiceView = document.querySelector("#frameChoiceView");
+const choiceImage = document.querySelector("#choiceImage");
+const combinaBtn = document.querySelector("#combinaBtn");
+const reagisciBtn = document.querySelector("#reagisciBtn");
+const choiceBack = document.querySelector("#choiceBack");
+const choiceStatus = document.querySelector("#choiceStatus");
+
+let pendingMatch = null;
+let pendingFrameId = null;
 function debugLog_func(msg) {
   console.log(msg);
 }
@@ -54,6 +63,9 @@ let images = [];
 
 startCameraButton.addEventListener("click", startCamera);
 scanFrameButton.addEventListener("click", scanFrame);
+combinaBtn.addEventListener("click", handleCombina);
+reagisciBtn.addEventListener("click", handleReagisci);
+choiceBack.addEventListener("click", backToScanner);
 
 loadImages();
 loadKnownMarkerPatterns();
@@ -147,20 +159,84 @@ async function scanFrame() {
   }
 
   debugLog_func("✅ Found image for frame " + marker.frameId);
-  showMatch(match, marker);
   setStatus(`Riconosciuta ${marker.label}: disegno trovato.`);
-  await moveMatchedImage(match, marker.frameId);
-  showFrameMeeting();
+
+  // Salva il match: lo spostamento/animazione a parete parte SOLO con "Combina"
+  pendingMatch = match;
+  pendingFrameId = marker.frameId;
+
+  // Caricamento (4s) → pagina di scelta con il disegno scansionato
+  showView(frameLoadingView);
+  setTimeout(() => {
+    choiceImage.src = match.dataUrl || `${match.url}?t=${Date.now()}`;
+    choiceStatus.textContent = "";
+    combinaBtn.disabled = false;
+    reagisciBtn.disabled = false;
+    showView(frameChoiceView);
+  }, 4000);
 }
 
-// Mostra la pagina di caricamento "OCChI aI QUaDRI!" per 4s, poi torna alla home
-function showFrameMeeting() {
-  if (captureView) captureView.hidden = true;
-  if (frameLoadingView) {
-    frameLoadingView.hidden = false;
-    frameLoadingView.classList.add("is-active");
+function showView(view) {
+  for (const screen of [captureView, frameLoadingView, frameChoiceView]) {
+    if (!screen) continue;
+    screen.hidden = screen !== view;
+    screen.classList.toggle("is-active", screen === view);
   }
-  setTimeout(() => { window.location.href = "home.html"; }, 4000);
+}
+
+function backToScanner() {
+  pendingMatch = null;
+  pendingFrameId = null;
+  choiceImage.removeAttribute("src");
+  showView(captureView);
+}
+
+// COMBINA: avvia ora l'animazione a parete (coppia di classe → composizione)
+async function handleCombina() {
+  if (!pendingMatch) return;
+  combinaBtn.disabled = true;
+  reagisciBtn.disabled = true;
+  choiceStatus.textContent = "Sto componendo a parete...";
+  try {
+    await moveMatchedImage(pendingMatch, pendingFrameId);
+    window.location.href = "home.html";
+  } catch (error) {
+    console.error(error);
+    choiceStatus.textContent = "Non sono riuscito a comporre. Riprova.";
+    combinaBtn.disabled = false;
+    reagisciBtn.disabled = false;
+  }
+}
+
+// REAGISCI: manda un "incanto" → burst di stelline sul disegno a parete.
+// Si possono lasciare più reazioni; si resta sulla pagina.
+async function handleReagisci() {
+  if (!pendingMatch) return;
+  reagisciBtn.disabled = true;
+  try {
+    await reactToImage(pendingMatch.id);
+    choiceStatus.textContent = "Incanto inviato! ✨";
+  } catch (error) {
+    console.error(error);
+    choiceStatus.textContent = "Incanto non inviato. Riprova.";
+  } finally {
+    setTimeout(() => { reagisciBtn.disabled = false; }, 600);
+  }
+}
+
+async function reactToImage(imageId) {
+  if (usesBrowserStorage) {
+    imageChannel?.postMessage({ type: "react", id: imageId });
+    return;
+  }
+  const response = await fetch("api/react", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageId })
+  });
+  if (!response.ok) {
+    throw new Error("React failed");
+  }
 }
 
 function findImageByFrame(frameId) {

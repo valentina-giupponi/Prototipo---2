@@ -167,6 +167,11 @@ function connectToImageEvents() {
         return;
       }
 
+      if (event.data?.type === "react") {
+        triggerReaction(event.data.id);
+        return;
+      }
+
       addImage(event.data?.image || event.data);
     });
 
@@ -208,6 +213,11 @@ function connectToImageEvents() {
     removeImage(payload?.id || null);
   });
 
+  events.addEventListener("react", (event) => {
+    const payload = JSON.parse(event.data);
+    triggerReaction(payload?.id || null);
+  });
+
   events.addEventListener("error", () => {
     connectionState.textContent = "Riconnessione...";
   });
@@ -238,6 +248,45 @@ function updateImages(updatedImages) {
 function removeImage(id) {
   images = id ? images.filter((image) => image.id !== id) : images.slice(0, -1);
   renderImages();
+}
+
+// "Incanto": burst di stelline gialle sul disegno indicato
+function triggerReaction(imageId) {
+  if (!imageId) {
+    return;
+  }
+
+  const img = displayWall.querySelector(`img[data-image-id="${imageId}"]`);
+  if (!img) {
+    return;
+  }
+
+  const rect = img.getBoundingClientRect();
+  spawnStarBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+
+function spawnStarBurst(centerX, centerY) {
+  const count = 16;
+
+  for (let i = 0; i < count; i++) {
+    const star = document.createElement("span");
+    star.className = "spell-star";
+    star.textContent = "★";
+
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+    const distance = 80 + Math.random() * 110;
+
+    star.style.left = `${centerX}px`;
+    star.style.top = `${centerY}px`;
+    star.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+    star.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+    star.style.setProperty("--rot", `${(Math.random() * 2 - 1) * 180}deg`);
+    star.style.fontSize = `${18 + Math.random() * 22}px`;
+    star.style.animationDelay = `${Math.random() * 140}ms`;
+
+    document.body.append(star);
+    star.addEventListener("animationend", () => star.remove(), { once: true });
+  }
 }
 
 function renderImages(activeImageId = null) {
@@ -290,11 +339,11 @@ function renderImages(activeImageId = null) {
         img.style.setProperty("--motion-delay", getDrawingMotionDelay(image.id, index));
         img.style.setProperty("--motion-duration", getDrawingMotionDuration(image.id));
         img.className = frame.role === "composition" ? "composition-image drawing-motion" : "single-image drawing-motion";
+        img.dataset.imageId = image.id;
 
         if (transitingImages.has(image.id) || imagesInTransit.has(image.id)) {
           img.style.visibility = "hidden";
           img.dataset.transiting = "true";
-          img.dataset.imageId = image.id;
         }
 
         const isComposition = frame.role === "composition";

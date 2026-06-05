@@ -36,16 +36,50 @@
         <div class="scan-spacer" aria-hidden="true"></div>
       </div>
 
-      <!-- elementi di utilità richiesti da frame-scan.js -->
       <button id="startCamera" aria-hidden="true" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0"></button>
       <p id="status" class="scan-status" role="status"></p>
     </section>
 
-    <!-- ── PAGINA DI CARICAMENTO DOPO LO SCATTO (4s) ── -->
-    <section id="frameLoadingView" class="scan-overlay scan-meet" aria-label="Incontro" hidden>
+    <!-- ── PAGINA DI CARICAMENTO (4s) ── -->
+    <section id="frameLoadingView" class="scan-overlay scan-meet" aria-label="Caricamento" hidden>
       <h1 class="wall-title">OCChI<br>aI QUaDRI!</h1>
       <p class="wall-subtitle">La tua cosa da niente<br>sta prendendo vita</p>
       <img src="assets/character/Character_incontro.png" class="meet-character" alt="" aria-hidden="true">
+    </section>
+
+    <!-- ── PAGINA SCELTA: COMBINA / REAGISCI ── -->
+    <section id="frameChoiceView" class="scan-overlay scan-choice" aria-label="Disegno scansionato" hidden>
+      <button id="choiceBack" class="scan-back" type="button" aria-label="Torna allo scanner">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M13 4 L7 10 L13 16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <h1 class="choice-title">Ecco IL diSegno<br>ScanSionaTo</h1>
+
+      <div class="choice-preview">
+        <img id="choiceImage" alt="Disegno scansionato">
+      </div>
+
+      <div class="choice-actions">
+        <button id="combinaBtn" class="choice-btn choice-combina" type="button">
+          <img src="assets/character/combina-icona.png" class="choice-btn-icon" alt="">
+          <span class="choice-btn-text">
+            <strong>COMBINA</strong>
+            <small>Abbinalo a un altro disegno</small>
+          </span>
+        </button>
+
+        <button id="reagisciBtn" class="choice-btn choice-reagisci" type="button">
+          <img src="assets/character/reagisci-icona.png" class="choice-btn-icon" alt="">
+          <span class="choice-btn-text">
+            <strong>REAGISCI</strong>
+            <small>Manda un incanto al disegno</small>
+          </span>
+        </button>
+      </div>
+
+      <p id="choiceStatus" class="choice-status" role="status"></p>
     </section>
 
     <!-- stub nascosti usati da frame-scan.js -->

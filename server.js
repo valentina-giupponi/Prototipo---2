@@ -63,6 +63,10 @@ const server = http.createServer(async (req, res) => {
       return handleReassignFrame(req, res);
     }
 
+    if (req.method === "POST" && url.pathname === "/api/react") {
+      return handleReact(req, res);
+    }
+
     if (req.method === "DELETE" && url.pathname === "/api/latest") {
       return handleDeleteLatest(res);
     }
@@ -235,6 +239,19 @@ async function handleReassignFrame(req, res) {
   sendJson(res, { images: movedImages, frame: destination });
 }
 
+async function handleReact(req, res) {
+  const body = await readBody(req);
+  const payload = JSON.parse(body || "{}");
+  const imageId = String(payload.imageId || "").trim();
+
+  if (!imageId) {
+    return sendJson(res, { error: "Missing imageId" }, 400);
+  }
+
+  broadcastReact(imageId);
+  sendJson(res, { ok: true });
+}
+
 function handleDeleteLatest(res) {
   const deletedImage = images.pop();
 
@@ -283,6 +300,14 @@ function broadcastMove(imagesToMove) {
 
 function broadcastDelete(image) {
   const event = `event: delete\ndata: ${JSON.stringify({ id: image?.id || null })}\n\n`;
+
+  for (const client of clients) {
+    client.write(event);
+  }
+}
+
+function broadcastReact(imageId) {
+  const event = `event: react\ndata: ${JSON.stringify({ id: imageId })}\n\n`;
 
   for (const client of clients) {
     client.write(event);

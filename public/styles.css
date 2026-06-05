@@ -1093,3 +1093,29 @@ video {
     scale: 1.042;
   }
 }
+
+/* ── INCANTO: burst di stelline gialle ────────────────── */
+.spell-star {
+  position: fixed;
+  z-index: 10000;
+  color: #FFCF00;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 0 10px rgba(255, 207, 0, 0.75);
+  animation: spell-burst 950ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes spell-burst {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(0.2) rotate(0deg);
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--dx, 0), var(--dy, 0)) scale(1.1) rotate(var(--rot, 0deg));
+    opacity: 0;
+  }
+}
