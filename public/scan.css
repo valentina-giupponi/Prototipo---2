@@ -346,16 +346,16 @@
 
 .confirm-actions {
   display: flex;
-  gap: 36px;
+  gap: 30px;
   justify-content: center;
-  margin-top: 16px;
+  margin-top: 8px;
 }
 
 .confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .confirm-btn {
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   border: none;
   border-radius: 50%;
   display: flex;
