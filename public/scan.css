@@ -570,20 +570,6 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* ── FRAME MEETING / LOADING VIEW ─────────────────────── */
-
-.scan-meet {
-  background: var(--blue);
-  justify-content: center;
-  gap: 22px;
-}
-
-.meet-character {
-  width: min(76%, 380px);
-  height: auto;
-  margin-top: 8px;
-}
-
 /* ── SHARED BUTTONS ──────────────────────────────────── */
 
 .btn-primary,
