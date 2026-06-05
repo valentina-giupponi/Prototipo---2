@@ -511,27 +511,56 @@ function detectSymbolColor(context, width, height, headerHeight) {
 function drawVisibleCameraToCanvas() {
   const sourceWidth = camera.videoWidth;
   const sourceHeight = camera.videoHeight;
+  const videoRect = camera.getBoundingClientRect();
+  const guide = document.querySelector("#a4Guide");
+  const guideRect = guide ? guide.getBoundingClientRect() : videoRect;
 
-  // Ritaglia il PIÙ GRANDE rettangolo A4 verticale centrato nel frame della
-  // camera. Così, anche se l'utente riempie tutto lo schermo con il foglio,
-  // viene catturato l'intero foglio — header con il simbolo incluso — e il
-  // riconoscimento del colore/classe funziona in modo affidabile.
-  const a4Aspect = 210 / 297; // larghezza/altezza ≈ 0.707
-  let cropWidth;
-  let cropHeight;
+  // Il video usa object-fit: cover: la sorgente viene scalata per riempire il
+  // box e le parti eccedenti vengono tagliate fuori schermo. Calcolo come la
+  // sorgente è mappata sul box, così ritaglio ESATTAMENTE la regione del
+  // rettangolo bianco (guida A4) che l'utente vede: ciò che è nel rettangolo
+  // è esattamente ciò che viene scattato (WYSIWYG).
+  const sourceAspect = sourceWidth / sourceHeight;
+  const boxAspect = videoRect.width / videoRect.height;
+  let renderedWidth;
+  let renderedHeight;
+  let offsetX;
+  let offsetY;
 
-  if (sourceWidth / sourceHeight > a4Aspect) {
-    cropHeight = sourceHeight;
-    cropWidth = Math.round(cropHeight * a4Aspect);
+  if (sourceAspect > boxAspect) {
+    renderedHeight = videoRect.height;
+    renderedWidth = videoRect.height * sourceAspect;
+    offsetX = (videoRect.width - renderedWidth) / 2;
+    offsetY = 0;
   } else {
-    cropWidth = sourceWidth;
-    cropHeight = Math.round(cropWidth / a4Aspect);
+    renderedWidth = videoRect.width;
+    renderedHeight = videoRect.width / sourceAspect;
+    offsetX = 0;
+    offsetY = (videoRect.height - renderedHeight) / 2;
   }
 
-  const cropX = Math.round((sourceWidth - cropWidth) / 2);
-  const cropY = Math.round((sourceHeight - cropHeight) / 2);
+  const scaleX = sourceWidth / renderedWidth;
+  const scaleY = sourceHeight / renderedHeight;
+  const guideLeftInBox = guideRect.left - videoRect.left;
+  const guideTopInBox = guideRect.top - videoRect.top;
 
-  drawCroppedToCanvas(camera, cropX, cropY, cropWidth, cropHeight);
+  let cropX = (guideLeftInBox - offsetX) * scaleX;
+  let cropY = (guideTopInBox - offsetY) * scaleY;
+  let cropWidth = guideRect.width * scaleX;
+  let cropHeight = guideRect.height * scaleY;
+
+  cropX = Math.max(0, Math.min(cropX, sourceWidth));
+  cropY = Math.max(0, Math.min(cropY, sourceHeight));
+  cropWidth = Math.min(cropWidth, sourceWidth - cropX);
+  cropHeight = Math.min(cropHeight, sourceHeight - cropY);
+
+  drawCroppedToCanvas(
+    camera,
+    Math.round(cropX),
+    Math.round(cropY),
+    Math.round(cropWidth),
+    Math.round(cropHeight)
+  );
 }
 
 function drawToCanvas(source, sourceWidth, sourceHeight) {
