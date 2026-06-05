@@ -264,11 +264,13 @@ function createScanFromCanvas(sourceCanvas) {
 }
 
 function cropDrawingCanvas(sourceCanvas) {
+  // L'area di disegno è la fascia centrale del foglio: sotto l'header
+  // (domanda + simbolo) e sopra il logo "gomma" in basso, che resta escluso.
   const crop = {
     x: Math.round(sourceCanvas.width * 0.06),
     y: Math.round(sourceCanvas.height * 0.31),
     width: Math.round(sourceCanvas.width * 0.88),
-    height: Math.round(sourceCanvas.height * 0.57)
+    height: Math.round(sourceCanvas.height * 0.52)
   };
   const drawingCanvas = document.createElement("canvas");
   const drawingContext = drawingCanvas.getContext("2d", { willReadFrequently: true });
