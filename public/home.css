@@ -193,6 +193,39 @@ body {
   object-fit: contain;
 }
 
+/* ── WALL LINK (solo desktop) ─────────────────────────── */
+
+.wall-link {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .wall-link {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 60;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--white);
+    color: var(--blue);
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    border-radius: 100px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    transition: transform 120ms ease, background 120ms ease;
+  }
+
+  .wall-link:hover {
+    transform: translateY(-1px);
+    background: #f0ecff;
+  }
+}
+
 /* ── FAB BUTTON (standalone, bottom-right) ────────────── */
 
 .nav-fab {
