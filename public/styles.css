@@ -1204,13 +1204,18 @@ video {
   opacity: 0.88;
 }
 
-/* Composizione: due disegni affiancati (default), colorati per classe + glow */
+/* Composizione: due disegni affiancati (default), colorati per classe.
+   Trasparenza + glow applicati al GRUPPO (il contenitore), così dove i due
+   tratti si sovrappongono non si scuriscono: sembrano un disegno unico. */
 .display-page .display-wall .is-composition-frame .wall-frame-art {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 0;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8))
+          drop-shadow(0 0 24px rgba(255, 255, 255, 0.45));
 }
 
 .display-page .display-wall .is-composition-frame .wall-frame-art img.composition-image {
@@ -1220,9 +1225,8 @@ video {
   max-width: none;
   max-height: none;
   object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8))
-          drop-shadow(0 0 24px rgba(255, 255, 255, 0.45));
-  opacity: 0.9;
+  filter: none;
+  opacity: 1;
 }
 
 /* Composizione impilata (cornice verticale): disegni uno sopra l'altro */

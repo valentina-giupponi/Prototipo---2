@@ -384,16 +384,16 @@ function renderImages(activeImageId = null) {
           img.style.filter = "brightness(0) invert(1) drop-shadow(0 0 10px rgba(255,255,255,0.9)) drop-shadow(0 0 24px rgba(255,255,255,0.5))";
         }
 
-        // Composizione non rigida: i due disegni si sfasano e possono
-        // sovrapporsi leggermente (overlap + stagger in direzioni opposte).
+        // Composizione non rigida: piccola sovrapposizione + leggero
+        // sfasamento in direzioni opposte (su/giù affiancati, sx/dx impilati).
         if (frame.role === "composition" && frameImages.length > 1) {
           const dir = index === 0 ? -1 : 1;
           if (frame.stack) {
-            img.style.marginTop = index === 1 ? "-9%" : "0";
-            img.style.marginLeft = `${dir * 6}%`;
+            img.style.marginTop = index === 1 ? "-4%" : "0";
+            img.style.marginLeft = `${dir * 3.5}%`;
           } else {
-            img.style.marginLeft = index === 1 ? "-9%" : "0";
-            img.style.marginTop = `${dir * 6}%`;
+            img.style.marginLeft = index === 1 ? "-4%" : "0";
+            img.style.marginTop = `${dir * 3.5}%`;
           }
         }
 
