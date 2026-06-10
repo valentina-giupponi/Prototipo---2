@@ -20,7 +20,7 @@ const frameSlots = [
   { id: "005", label: "Cornice 005", size: "small", role: "single", opening: { left: 5.54, top: 50.17, width: 11.24, height: 30.1 } },
   { id: "006", label: "Cornice 006", size: "small", role: "single", opening: { left: 46.81, top: 61.2, width: 11.24, height: 30.43 } },
   { id: "101", label: "Cornice composizione 101", size: "large", role: "composition", opening: { left: 21.31, top: 7.36, width: 26.01, height: 28.09 } },
-  { id: "102", label: "Cornice composizione 102", size: "large", role: "composition", opening: { left: 23.83, top: 48.16, width: 15.94, height: 42.14 } },
+  { id: "102", label: "Cornice composizione 102", size: "large", role: "composition", stack: true, opening: { left: 23.83, top: 48.16, width: 15.94, height: 42.14 } },
   { id: "103", label: "Cornice composizione 103", size: "large", role: "composition", opening: { left: 64.93, top: 60.87, width: 26.01, height: 28.09 } }
 ];
 
@@ -342,6 +342,9 @@ function renderImages(activeImageId = null) {
     figure.className = "wall-frame";
     figure.classList.add(frame.size === "large" ? "is-large" : "is-small");
     figure.classList.add(frame.role === "composition" ? "is-composition-frame" : "is-single-frame");
+    if (frame.stack) {
+      figure.classList.add("is-stacked");
+    }
     figure.dataset.frame = frame.id;
 
     // Posiziona la cornice esattamente sull'apertura del muro
@@ -375,6 +378,24 @@ function renderImages(activeImageId = null) {
         img.style.setProperty("--motion-duration", getDrawingMotionDuration(image.id));
         img.className = frame.role === "composition" ? "composition-image drawing-motion" : "single-image drawing-motion";
         img.dataset.imageId = image.id;
+
+        // Disegno singolo proiettato: tratto BIANCO + glow garantiti (inline)
+        if (frame.role !== "composition") {
+          img.style.filter = "brightness(0) invert(1) drop-shadow(0 0 10px rgba(255,255,255,0.9)) drop-shadow(0 0 24px rgba(255,255,255,0.5))";
+        }
+
+        // Composizione non rigida: i due disegni si sfasano e possono
+        // sovrapporsi leggermente (overlap + stagger in direzioni opposte).
+        if (frame.role === "composition" && frameImages.length > 1) {
+          const dir = index === 0 ? -1 : 1;
+          if (frame.stack) {
+            img.style.marginTop = index === 1 ? "-9%" : "0";
+            img.style.marginLeft = `${dir * 6}%`;
+          } else {
+            img.style.marginLeft = index === 1 ? "-9%" : "0";
+            img.style.marginTop = `${dir * 6}%`;
+          }
+        }
 
         if (transitingImages.has(image.id) || imagesInTransit.has(image.id)) {
           img.style.visibility = "hidden";
