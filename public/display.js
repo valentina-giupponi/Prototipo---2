@@ -389,8 +389,8 @@ function renderImages(activeImageId = null) {
         if (frame.role === "composition" && frameImages.length > 1) {
           const dir = index === 0 ? -1 : 1;
           if (frame.stack) {
-            img.style.marginTop = index === 1 ? "-4%" : "0";
-            img.style.marginLeft = `${dir * 3.5}%`;
+            img.style.marginTop = index === 1 ? "-8%" : "0";
+            img.style.marginLeft = `${dir * 6}%`;
           } else {
             img.style.marginLeft = index === 1 ? "-4%" : "0";
             img.style.marginTop = `${dir * 3.5}%`;
