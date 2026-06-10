@@ -1087,10 +1087,10 @@ video {
 
 @keyframes drawing-breathe {
   0%, 100% {
-    scale: 0.972;
+    scale: 0.9;
   }
   50% {
-    scale: 1.042;
+    scale: 1.12;
   }
 }
 

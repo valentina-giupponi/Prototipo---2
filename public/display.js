@@ -271,7 +271,7 @@ function triggerReaction(imageId) {
 const SPELL_GIF_MS = 3000;
 
 function playSpellGif(rect) {
-  const size = Math.max(rect.width, rect.height) * 1.8;
+  const size = Math.max(rect.width, rect.height) * 1.5;
   const el = document.createElement("img");
   el.className = "spell-gif";
   el.alt = "";
