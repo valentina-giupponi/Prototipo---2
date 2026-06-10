@@ -210,7 +210,13 @@ async function handleReassignFrame(req, res) {
   }
 
   const partnerIndex = chooseRandomPartnerIndex(imageId);
-  const targetIndexes = partnerIndex >= 0 ? [imageIndex, partnerIndex] : [imageIndex];
+
+  // Senza partner della stessa classe a parete non si sposta nulla.
+  if (partnerIndex < 0) {
+    return sendJson(res, { images: [], noPartner: true });
+  }
+
+  const targetIndexes = [imageIndex, partnerIndex];
   const destination = chooseCompositionFrame(targetIndexes.length);
 
   if (!destination) {

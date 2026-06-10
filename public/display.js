@@ -262,46 +262,32 @@ function triggerReaction(imageId) {
   }
 
   const rect = img.getBoundingClientRect();
-
-  // Usa l'animazione Lottie se disponibile, altrimenti fallback alle stelline
-  if (window.lottie) {
-    playSpellLottie(rect);
-  } else {
-    spawnStarBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  }
+  playSpellGif(rect);
 }
 
-// Riproduce il Lottie "stelline" una volta, centrato sul disegno.
-// Ogni reazione crea un player indipendente → più reazioni in contemporanea.
-function playSpellLottie(rect) {
-  // Dimensione basata sul lato minore così il burst resta centrato sul
-  // disegno e parte dal centro verso l'esterno (non troppo disperso).
-  const size = Math.min(rect.width, rect.height) * 2.0;
-  const container = document.createElement("div");
-  container.className = "spell-lottie";
-  container.style.left = `${rect.left + rect.width / 2}px`;
-  container.style.top = `${rect.top + rect.height / 2}px`;
-  container.style.width = `${size}px`;
-  container.style.height = `${size}px`;
-  document.body.append(container);
+// Riproduce la GIF "stelline" una volta, centrata sul disegno.
+// Cache-busting nel src → riparte da frame 0 a ogni reazione; più reazioni
+// in contemporanea = più <img> indipendenti. Rimossa a fine ciclo (3s).
+const SPELL_GIF_MS = 3000;
 
-  const anim = window.lottie.loadAnimation({
-    container,
-    renderer: "svg",
-    loop: false,
-    autoplay: true,
-    path: "assets/stars.json"
-  });
+function playSpellGif(rect) {
+  const size = Math.max(rect.width, rect.height) * 1.8;
+  const el = document.createElement("img");
+  el.className = "spell-gif";
+  el.alt = "";
+  el.style.left = `${rect.left + rect.width / 2}px`;
+  el.style.top = `${rect.top + rect.height / 2}px`;
+  el.style.width = `${size}px`;
+  el.style.height = `${size}px`;
 
-  anim.addEventListener("complete", () => {
-    anim.destroy();
-    container.remove();
-  });
-  // Sicurezza: rimuovi comunque dopo 5s nel caso 'complete' non scatti
-  setTimeout(() => {
-    try { anim.destroy(); } catch (e) {}
-    container.remove();
-  }, 5000);
+  el.onerror = () => {
+    el.remove();
+    spawnStarBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+
+  el.src = `assets/STARS.gif?t=${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+  document.body.append(el);
+  setTimeout(() => el.remove(), SPELL_GIF_MS);
 }
 
 function spawnStarBurst(centerX, centerY) {

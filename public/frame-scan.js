@@ -196,10 +196,29 @@ async function handleCombina() {
   if (!pendingMatch) return;
   combinaBtn.disabled = true;
   reagisciBtn.disabled = true;
-  choiceStatus.textContent = "Sto componendo a parete...";
+  choiceStatus.textContent = "Sto cercando un disegno da abbinare...";
   try {
-    await moveMatchedImage(pendingMatch, pendingFrameId);
-    window.location.href = "home.html";
+    const result = await moveMatchedImage(pendingMatch, pendingFrameId);
+    const moved = Array.isArray(result?.images) && result.images.length > 0;
+
+    if (moved) {
+      // Coppia trovata → animazione a parete, poi torna alla home
+      window.location.href = "home.html";
+      return;
+    }
+
+    // Nessun partner della stessa classe a parete: non succede nulla
+    if (result?.noPartner) {
+      choiceStatus.textContent = "Nessun disegno della stessa classe a parete: per ora non c'è nessuno da abbinare.";
+    } else if (result?.full) {
+      choiceStatus.textContent = "Le cornici di composizione sono già piene.";
+    } else if (result?.locked) {
+      choiceStatus.textContent = "Questo disegno è già in una composizione.";
+    } else {
+      choiceStatus.textContent = "Per ora non c'è nessun disegno da abbinare.";
+    }
+    combinaBtn.disabled = false;
+    reagisciBtn.disabled = false;
   } catch (error) {
     console.error(error);
     choiceStatus.textContent = "Non sono riuscito a comporre. Riprova.";
@@ -265,40 +284,17 @@ function showMatch(image, marker) {
 }
 
 async function moveMatchedImage(image, fromFrameId) {
-  try {
-    const result = usesBrowserStorage
-      ? moveLocalComposition(image.id, fromFrameId)
-      : await moveServerImage(image.id, fromFrameId);
-    const movedImages = Array.isArray(result?.images) ? result.images : result ? [result] : [];
+  const result = usesBrowserStorage
+    ? moveLocalComposition(image.id, fromFrameId)
+    : await moveServerImage(image.id, fromFrameId);
+  const movedImages = Array.isArray(result?.images) ? result.images : result ? [result] : [];
 
-    if (result?.locked) {
-      matchInfo.textContent = "Questo disegno è già dentro una composizione e resta bloccato lì.";
-      return;
-    }
-
-    if (result?.full) {
-      matchInfo.textContent = "Disegno trovato. Le cornici di composizione sono già complete.";
-      return;
-    }
-
-    if (result?.stale) {
-      matchInfo.textContent = "La parete è già cambiata: aggiorno le informazioni e non sposto questo disegno.";
-      await loadImages();
-      return;
-    }
-
-    if (movedImages.length > 0) {
-      const updateMap = new Map(movedImages.map((item) => [item.id, item]));
-      images = images.map((item) => updateMap.get(item.id) || item);
-      const destination = movedImages[0].frame;
-      matchInfo.textContent = movedImages.length > 1
-        ? `Disegno trovato. Sulla parete si sta componendo con un altro disegno della stessa domanda in ${destination.label}.`
-        : `Disegno trovato. Non ci sono ancora altri disegni con lo stesso simbolo: si sposta da solo verso ${destination.label}.`;
-    }
-  } catch (error) {
-    console.error(error);
-    matchInfo.textContent = "Disegno trovato. Non sono riuscito a spostarlo sulla parete.";
+  if (movedImages.length > 0) {
+    const updateMap = new Map(movedImages.map((item) => [item.id, item]));
+    images = images.map((item) => updateMap.get(item.id) || item);
   }
+
+  return result;
 }
 
 async function moveServerImage(imageId, fromFrameId) {
@@ -335,7 +331,13 @@ function moveLocalComposition(imageId, fromFrameId) {
   }
 
   const partnerIndex = chooseRandomPartnerIndex(localImages, imageId);
-  const targetIndexes = partnerIndex >= 0 ? [imageIndex, partnerIndex] : [imageIndex];
+
+  // Senza partner della stessa classe non si sposta nulla.
+  if (partnerIndex < 0) {
+    return { images: [], noPartner: true };
+  }
+
+  const targetIndexes = [imageIndex, partnerIndex];
   const destination = chooseCompositionFrame(localImages, targetIndexes.length);
 
   if (!destination) {
