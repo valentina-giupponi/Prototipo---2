@@ -262,7 +262,44 @@ function triggerReaction(imageId) {
   }
 
   const rect = img.getBoundingClientRect();
-  spawnStarBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+  // Usa l'animazione Lottie se disponibile, altrimenti fallback alle stelline
+  if (window.lottie) {
+    playSpellLottie(rect);
+  } else {
+    spawnStarBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }
+}
+
+// Riproduce il Lottie "stelline" una volta, centrato sul disegno.
+// Ogni reazione crea un player indipendente → più reazioni in contemporanea.
+function playSpellLottie(rect) {
+  const size = Math.max(rect.width, rect.height) * 1.6;
+  const container = document.createElement("div");
+  container.className = "spell-lottie";
+  container.style.left = `${rect.left + rect.width / 2}px`;
+  container.style.top = `${rect.top + rect.height / 2}px`;
+  container.style.width = `${size}px`;
+  container.style.height = `${size}px`;
+  document.body.append(container);
+
+  const anim = window.lottie.loadAnimation({
+    container,
+    renderer: "svg",
+    loop: false,
+    autoplay: true,
+    path: "assets/stars.json"
+  });
+
+  anim.addEventListener("complete", () => {
+    anim.destroy();
+    container.remove();
+  });
+  // Sicurezza: rimuovi comunque dopo 5s nel caso 'complete' non scatti
+  setTimeout(() => {
+    try { anim.destroy(); } catch (e) {}
+    container.remove();
+  }, 5000);
 }
 
 function spawnStarBurst(centerX, centerY) {

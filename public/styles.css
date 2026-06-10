@@ -1094,7 +1094,15 @@ video {
   }
 }
 
-/* ── INCANTO: burst di stelline gialle ────────────────── */
+/* ── INCANTO: animazione Lottie centrata sul disegno ──── */
+.spell-lottie {
+  position: fixed;
+  z-index: 10000;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* ── INCANTO: burst di stelline gialle (fallback) ─────── */
 .spell-star {
   position: fixed;
   z-index: 10000;
