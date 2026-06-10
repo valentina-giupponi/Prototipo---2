@@ -274,7 +274,9 @@ function triggerReaction(imageId) {
 // Riproduce il Lottie "stelline" una volta, centrato sul disegno.
 // Ogni reazione crea un player indipendente → più reazioni in contemporanea.
 function playSpellLottie(rect) {
-  const size = Math.max(rect.width, rect.height) * 1.6;
+  // Dimensione basata sul lato minore così il burst resta centrato sul
+  // disegno e parte dal centro verso l'esterno (non troppo disperso).
+  const size = Math.min(rect.width, rect.height) * 2.0;
   const container = document.createElement("div");
   container.className = "spell-lottie";
   container.style.left = `${rect.left + rect.width / 2}px`;
