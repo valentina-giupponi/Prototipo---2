@@ -10,16 +10,18 @@ const usesBrowserStorage = location.protocol === "file:";
 const localImageKey = "drawing-scan-prototype.latest";
 const localImagesKey = "drawing-scan-prototype.images";
 const imageChannel = "BroadcastChannel" in window ? new BroadcastChannel("drawing-scan-prototype") : null;
+// opening = apertura interna della cornice in % dell'immagine parete (3576x1794),
+// estratte dall'alpha di cornici.png. Il disegno viene proiettato lì dentro.
 const frameSlots = [
-  { id: "001", label: "Cornice 001", position: { x: 0.18, y: 0.22 }, size: "small", role: "single" },
-  { id: "002", label: "Cornice 002", position: { x: 0.42, y: 0.18 }, size: "small", role: "single" },
-  { id: "003", label: "Cornice 003", position: { x: 0.68, y: 0.24 }, size: "small", role: "single" },
-  { id: "004", label: "Cornice 004", position: { x: 0.2, y: 0.68 }, size: "small", role: "single" },
-  { id: "005", label: "Cornice 005", position: { x: 0.48, y: 0.72 }, size: "small", role: "single" },
-  { id: "006", label: "Cornice 006", position: { x: 0.74, y: 0.66 }, size: "small", role: "single" },
-  { id: "101", label: "Cornice composizione 101", position: { x: 0.5, y: 0.34 }, size: "large", role: "composition" },
-  { id: "102", label: "Cornice composizione 102", position: { x: 0.32, y: 0.78 }, size: "large", role: "composition" },
-  { id: "103", label: "Cornice composizione 103", position: { x: 0.72, y: 0.78 }, size: "large", role: "composition" }
+  { id: "001", label: "Cornice 001", size: "small", role: "single", opening: { left: 4.7, top: 7.69, width: 11.24, height: 30.1 } },
+  { id: "002", label: "Cornice 002", size: "small", role: "single", opening: { left: 68.46, top: 7.69, width: 11.24, height: 30.1 } },
+  { id: "003", label: "Cornice 003", size: "small", role: "single", opening: { left: 52.18, top: 20.07, width: 11.24, height: 30.1 } },
+  { id: "004", label: "Cornice 004", size: "small", role: "single", opening: { left: 84.4, top: 20.07, width: 11.24, height: 30.1 } },
+  { id: "005", label: "Cornice 005", size: "small", role: "single", opening: { left: 5.54, top: 50.17, width: 11.24, height: 30.1 } },
+  { id: "006", label: "Cornice 006", size: "small", role: "single", opening: { left: 46.81, top: 61.2, width: 11.24, height: 30.43 } },
+  { id: "101", label: "Cornice composizione 101", size: "large", role: "composition", opening: { left: 21.31, top: 7.36, width: 26.01, height: 28.09 } },
+  { id: "102", label: "Cornice composizione 102", size: "large", role: "composition", opening: { left: 23.83, top: 48.16, width: 15.94, height: 42.14 } },
+  { id: "103", label: "Cornice composizione 103", size: "large", role: "composition", opening: { left: 64.93, top: 60.87, width: 26.01, height: 28.09 } }
 ];
 
 let images = [];
@@ -342,6 +344,14 @@ function renderImages(activeImageId = null) {
     figure.classList.add(frame.role === "composition" ? "is-composition-frame" : "is-single-frame");
     figure.dataset.frame = frame.id;
 
+    // Posiziona la cornice esattamente sull'apertura del muro
+    if (frame.opening) {
+      figure.style.left = `${frame.opening.left}%`;
+      figure.style.top = `${frame.opening.top}%`;
+      figure.style.width = `${frame.opening.width}%`;
+      figure.style.height = `${frame.opening.height}%`;
+    }
+
     if (frameImages.some((image) => image.id === activeImageId)) {
       figure.classList.add("is-active");
     }
@@ -386,10 +396,7 @@ function renderImages(activeImageId = null) {
       }
     }
 
-    const caption = document.createElement("figcaption");
-    caption.textContent = frame.label + (frame.role === "composition" && frameImages.length > 1 ? " · composizione" : "");
-
-    figure.append(artLayer, caption);
+    figure.append(artLayer);
     displayWall.append(figure);
   }
 

@@ -1128,3 +1128,103 @@ video {
     opacity: 0;
   }
 }
+
+/* ======================================================= */
+/* ===== PARETE GALLERIA REALISTICA (display.html) ======= */
+/* ======================================================= */
+
+/* Sfondo muro + overlay cornici stretchati identici allo stage,
+   così le % delle aperture restano allineate a ogni rapporto schermo. */
+.display-page .display-stage {
+  background: #1a1410 url("assets/parete%20sfondo.jpg") center/100% 100% no-repeat;
+}
+
+.display-page .display-wall {
+  position: absolute;
+  inset: 0;
+  display: block;
+  padding: 0;
+  grid-template-columns: none;
+  grid-template-rows: none;
+  z-index: 1;
+}
+
+.wall-cornici {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Ogni cornice è posizionata (inline) sull'apertura: nessun bordo/sfondo,
+   il legno lo mette l'overlay cornici.png sopra. */
+.display-page .display-wall .wall-frame {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: grid;
+  place-items: center;
+  grid-template-rows: none;
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+.display-page .display-wall .wall-frame-art {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+  border: none !important;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+}
+
+/* Disegno proiettato nelle cornici singole: tratto BIANCO + glow + trasparenza */
+.display-page .display-wall .is-single-frame .wall-frame-art img.single-image {
+  position: static;
+  inset: auto;
+  margin: 0;
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  filter: brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
+  opacity: 0.9;
+}
+
+/* Composizione: due disegni affiancati, colorati per classe + glow */
+.display-page .display-wall .is-composition-frame .wall-frame-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5%;
+}
+
+.display-page .display-wall .is-composition-frame .wall-frame-art img.composition-image {
+  position: static;
+  width: 42%;
+  height: 82%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.45));
+  opacity: 0.92;
+}
+
+/* Meta in primo piano sopra le cornici */
+.display-page .display-meta {
+  z-index: 20;
+}
+
+/* Clone in transito: stesso look proiettato */
+.transit-image {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.45));
+  opacity: 0.92;
+}
